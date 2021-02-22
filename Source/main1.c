@@ -4,7 +4,6 @@
 
 typedef int mtx_t;
 
-// Исчерпывающе включать limits.h
 #define int4_MAX (mtx_t)(0x7FFFFFFF)
 #define int4_MIN (mtx_t)(-0x7FFFFFFF - 1)
 
