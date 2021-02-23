@@ -1,11 +1,10 @@
 #include <stdio.h>
+#include <limits.h>
+#include <stdint.h>
 
 #define __N 255
 
-typedef int mtx_t;
-
-#define int4_MAX (mtx_t)(0x7FFFFFFF)
-#define int4_MIN (mtx_t)(-0x7FFFFFFF - 1)
+typedef int_least32_t mtx_t;
 
 typedef struct dat
 {
@@ -32,13 +31,13 @@ int main()
 
     for (size_t i = 0ull; i < x; ++i)
     {
-        inf[i].max = int4_MIN;
+        inf[i].max = _I32_MIN;
         inf[i].average = 0;
     }
 
     for (size_t i = 0ull; i < y; ++i)
     {
-        inf[i].min = int4_MAX;
+        inf[i].min = _I32_MAX;
         for (size_t j = 0ull; j < x; ++j)
         {
             scanf("%i", &mtx[i][j]);
