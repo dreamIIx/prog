@@ -21,7 +21,7 @@ typedef struct pair_short
 
 int main()
 {
-    size_t x, y;    
+    size_t x, y;
 
     scanf("%zu %zu", &x, &y);
     mtx_t mtx[__N][__N];
