@@ -23,7 +23,7 @@ int main()
 {
     size_t x, y;
 
-    scanf("%Iu %Iu", &x, &y);
+    scanf("%zu %zu", &x, &y);
     mtx_t mtx[__N][__N];
     _data inf[__N];
     pairShort points[__N * __N];
@@ -31,13 +31,25 @@ int main()
 
     for (size_t i = 0ull; i < x; ++i)
     {
+#ifdef _INC_LIMITS
         inf[i].max = _I32_MIN;
+#elif defined _GCC_LIMITS_H_
+        inf[i].max = INT_MAX;
+#else
+#error "Cannot provide INTMAX"
+#endif
         inf[i].average = 0;
     }
 
     for (size_t i = 0ull; i < y; ++i)
     {
+#ifdef _INC_LIMITS
         inf[i].min = _I32_MAX;
+#elif defined _GCC_LIMITS_H_
+        inf[i].min = INT_MIN;
+#else
+#error "Cannot provide INTMAX"
+#endif
         for (size_t j = 0ull; j < x; ++j)
         {
             scanf("%i", &mtx[i][j]);
