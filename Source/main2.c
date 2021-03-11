@@ -16,11 +16,16 @@ typedef struct _RegEx
 {
     char** ptr;
     char regex[_SZEXPRE];
+    int (**pFunc)(int, char);
     //struct _RegEx* next;
 } RegEx;
 
 void regex_init(RegEx*, const char*);
 void regex_destruct(RegEx*);
+inline int __equal(int, char);
+inline int __noteq(int, char);
+inline int __isalpha(int, char);
+inline int __isdigit(int, char);
 
 int main()
 {
@@ -75,14 +80,18 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
 
     size_t curszPtr = _SZEXPRE;
     inst->ptr = (char**) malloc(curszPtr * sizeof(char*));
+    inst->pFunc = (int (**)(int, char)) malloc(curszPtr * sizeof(int (*)(int, char)));
     size_t i = 0ull;
     int state = 0;
 #if !defined(_RECURSIVE)
-    int loopcount = 0;
+    unsigned int loopcount = 0;
     char** pPtr = NULL;
+    int (**ppFunc)(int, char) = NULL;
 #else
-    int* pLoopCount = (int*) calloc(_NRECCOUNT, sizeof(int));
+    unsigned int* vLoopCount = (unsigned int*) calloc(_NRECCOUNT, sizeof(unsigned int));
     char*** pPtr = (char***) malloc(_NRECCOUNT * sizeof(char**));
+    int (***ppFunc)(int, char) = (int (***)(int, char)) malloc(curszPtr * sizeof(int (**)(int, char)));
+    // just hope they are NULL :/
     ptrdiff_t curLoopCount = -1l;
 #endif
     while(*regex)
@@ -92,6 +101,7 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
         {
             curszPtr *= 2;
             inst->ptr = (char**) realloc(inst->ptr, curszPtr * sizeof(char*));
+            inst->pFunc = (int (**)(int, char)) realloc(inst->pFunc, curszPtr * sizeof(int (*)(int, char)));
         }
 
         if (!state)
@@ -100,49 +110,64 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
             {
                 state = 1;
             }
-            else if ((*regex == '\\') || (*regex == '~'))
+            else if (*regex == '\\')
             {
-                inst->ptr[i++] = regex;
+                inst->ptr[i] = regex++;
+                if (*(regex++) == 'D')  inst->pFunc[i++] = &__isalpha; // check up condition
+                else                    inst->pFunc[i++] = &__isdigit;
+                //++regex;
+            }
+            else if (*regex == '~')
+            {
+                inst->ptr[i] = regex;
+                inst->pFunc[i++] = &__noteq;
                 regex += 2;
             }
             else if (*regex != ')')
             {
-                inst->ptr[i++] = regex++;
+                inst->ptr[i] = regex++;
+                inst->pFunc[i++] = &__equal;
             }
             else
             {
 #if !defined(_RECURSIVE)
-                if (loopcount && pPtr != NULL)
+                if (loopcount /*unnecessary but ->*/ && pPtr != NULL && ppFunc != NULL)
                 {
                     ++pPtr;
                     char** curPtr = &inst->ptr[i - 1];
-                    for(int k = 0; k < loopcount - 1; ++k)
+                    for(unsigned int k = 0; k < loopcount - 1; ++k)
                     {
                         size_t idx = 0ull;
                         while((pPtr + idx) - 1 != curPtr)
                         {
-                            inst->ptr[i++] = *(pPtr + idx++);
+                            inst->ptr[i] = *(pPtr + idx);
+                            inst->pFunc[i++] = *(ppFunc + idx++);
                         }
                     }
                 }
                 regex += 2;
                 loopcount = 0;
+                pPtr = NULL;
+                ppFunc = NULL;
 #else
-                if (pLoopCount[curLoopCount] && pPtr[curLoopCount] != NULL)
+                if (vLoopCount[curLoopCount] /*unnecessary but ->*/ && pPtr[curLoopCount] != NULL && ppFunc[curLoopCount] != NULL)
                 {
                     ++pPtr[curLoopCount];
                     char** curPtr = &inst->ptr[i - 1];
-                    for(int k = 0; k < pLoopCount[curLoopCount] - 1; ++k)
+                    for(unsigned int k = 0; k < vLoopCount[curLoopCount] - 1; ++k)
                     {
                         size_t idx = 0ull;
                         while((pPtr[curLoopCount] + idx) - 1 != curPtr)
                         {
-                            inst->ptr[i++] = *(pPtr[curLoopCount] + idx++);
+                            inst->ptr[i] = *(pPtr[curLoopCount] + idx);
+                            inst->pFunc[i++] = *(ppFunc[curLoopCount] + idx++);
                         }
                     }
                 }
                 regex += 2;
-                pLoopCount[curLoopCount] = 0;
+                vLoopCount[curLoopCount] = 0;
+                pPtr[curLoopCount] = NULL;
+                ppFunc[curLoopCount] = NULL;
                 --curLoopCount;
 #endif
             }
@@ -153,7 +178,6 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
             // [loopcount*(...)]
             if (state == 1)
             {
-                printf("pLoopCount = %d\n", pLoopCount[curLoopCount]);
 #if defined(_RECURSIVE)
                 ++curLoopCount;
 #endif
@@ -163,10 +187,10 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
                 {
 #if !defined(_RECURSIVE)
                     loopcount *= 10;
-                    loopcount += (int)(*regex - '0');
+                    loopcount += (unsigned int)(*regex - '0');
 #else
-                    pLoopCount[curLoopCount] *= 10;
-                    pLoopCount[curLoopCount] += (int)(*regex - '0');
+                    vLoopCount[curLoopCount] *= 10;
+                    vLoopCount[curLoopCount] += (unsigned int)(*regex - '0');
 #endif
                     ++regex;
                 }
@@ -176,21 +200,25 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
                 // granted reg-ex symbol
 #if !defined(_RECURSIVE)
                 pPtr = &inst->ptr[i - 1];
+                ppFunc = &inst->pFunc[i - 1];
 #else
                 pPtr[curLoopCount] = &inst->ptr[i - 1];
+                ppFunc[curLoopCount] = &inst->pFunc[i - 1];
 #endif
             }
         }
     }
 #if defined(_RECURSIVE)
-    free(pLoopCount);
+    free(vLoopCount);
     free(pPtr);
+    free(ppFunc);
 #endif
     inst->ptr[i] = NULL;
 }
 
 void regex_destruct(RegEx* inst)
 {
+    free(inst->pFunc);
     free(inst->ptr);
 }
 
@@ -208,4 +236,24 @@ int regex_match(char* regex, char* inst)
     }
 
     return 1;
+}
+
+inline int __equal(int _first, char _second)
+{
+    return (char)_first == _second;
+}
+
+inline int __noteq(int _first, char _second)
+{
+    return (char)_first != _second;
+}
+
+inline int __isdigit(int _first, char)
+{
+    return isdigit(_first);
+}
+
+inline int __isalpha(int _first, char)
+{
+    return isalpha(_first);
 }
