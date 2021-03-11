@@ -17,22 +17,24 @@ typedef struct _RegEx
     char** ptr;
     char regex[_SZEXPRE];
     int (**pFunc)(int, char);
-    //struct _RegEx* next;
+    size_t size;
+
 } RegEx;
 
 void regex_init(RegEx*, const char*);
 void regex_destruct(RegEx*);
-inline int __equal(int, char);
-inline int __noteq(int, char);
-inline int __isalpha(int, char);
-inline int __isdigit(int, char);
+int regex_match(RegEx*, char*);
+int __equal(int, char);
+int __noteq(int, char);
+int __isalpha(int, char);
+int __isdigit(int, char);
 
 int main()
 {
-    char regexstr[_SZEXPRE];
     size_t K;
-    scanf("%zu", &K);
+    char regexstr[_SZEXPRE];
     scanf("%s", regexstr);
+    scanf("%zu", &K);
     char* pStr[K];
     for(size_t i = 0ul; i < K; ++i)
     {
@@ -41,26 +43,24 @@ int main()
     }
     RegEx inst1;
     regex_init(&inst1, regexstr);
-    /*for(size_t i = 0ull; i < _SZEXPRE; ++i)
+    unsigned char nMatch = 0u;
+    for(size_t i = 0ull; i < K; ++i)
     {
-        char** ptr = inst1.ptr;
-        char** next = ptr + 1;
-        while(next != (inst1.ptr + _SZEXPRE + 1))
+        if (regex_match(&inst1, pStr[i]))
         {
-            size_t j = 0ull;
-            while((*ptr + j) != *next)
-            {
-                printf("%c", *(*ptr + j));
-                ++j;
-            }
-            ++ptr;
-            ++next;
+            printf("%zu ", i + 1);
         }
-    }*/
+        printf("\n");
+    }
+    if (!nMatch) printf("none");
+
     size_t yu = 0ull;
     while(inst1.ptr[yu] != NULL)
     {
-        printf("%c", *inst1.ptr[yu++]);
+        printf("%c\n", *inst1.ptr[yu]);
+        printf("%p\n", inst1.pFunc[yu]);
+        printf("%d", inst1.pFunc[yu](*inst1.ptr[yu], *inst1.ptr[yu]));
+        ++yu;
     }
 
     regex_destruct(&inst1);
@@ -75,8 +75,7 @@ int main()
 
 void regex_init(RegEx* inst, const char str[_SZEXPRE])
 {
-    strcpy(inst->regex, str);
-    char* regex = inst->regex;
+    char* regex = strcpy(inst->regex, str);
 
     size_t curszPtr = _SZEXPRE;
     inst->ptr = (char**) malloc(curszPtr * sizeof(char*));
@@ -91,15 +90,13 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
     unsigned int* vLoopCount = (unsigned int*) calloc(_NRECCOUNT, sizeof(unsigned int));
     char*** pPtr = (char***) malloc(_NRECCOUNT * sizeof(char**));
     int (***ppFunc)(int, char) = (int (***)(int, char)) malloc(curszPtr * sizeof(int (**)(int, char)));
-    // just hope they are NULL :/
     ptrdiff_t curLoopCount = -1l;
 #endif
     while(*regex)
     {
-        // cause' just 2 inc of i below
         if (i > curszPtr - 2)
         {
-            curszPtr *= 2;
+            curszPtr += _SZEXPRE;
             inst->ptr = (char**) realloc(inst->ptr, curszPtr * sizeof(char*));
             inst->pFunc = (int (**)(int, char)) realloc(inst->pFunc, curszPtr * sizeof(int (*)(int, char)));
         }
@@ -119,7 +116,7 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
             }
             else if (*regex == '~')
             {
-                inst->ptr[i] = regex;
+                inst->ptr[i] = regex + 1;
                 inst->pFunc[i++] = &__noteq;
                 regex += 2;
             }
@@ -133,6 +130,13 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
 #if !defined(_RECURSIVE)
                 if (loopcount /*unnecessary but ->*/ && pPtr != NULL && ppFunc != NULL)
                 {
+                    if (i > curszPtr - loopcount - 1)
+                    {
+                        curszPtr += i - loopcount + 2;
+                        inst->ptr = (char**) realloc(inst->ptr, curszPtr * sizeof(char*));
+                        inst->pFunc = (int (**)(int, char)) realloc(inst->pFunc, curszPtr * sizeof(int (*)(int, char)));
+                    }
+
                     ++pPtr;
                     char** curPtr = &inst->ptr[i - 1];
                     for(unsigned int k = 0; k < loopcount - 1; ++k)
@@ -152,6 +156,13 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
 #else
                 if (vLoopCount[curLoopCount] /*unnecessary but ->*/ && pPtr[curLoopCount] != NULL && ppFunc[curLoopCount] != NULL)
                 {
+                    if (i > curszPtr - vLoopCount[curLoopCount] - 1)
+                    {
+                        curszPtr += i - vLoopCount[curLoopCount] + 2;
+                        inst->ptr = (char**) realloc(inst->ptr, curszPtr * sizeof(char*));
+                        inst->pFunc = (int (**)(int, char)) realloc(inst->pFunc, curszPtr * sizeof(int (*)(int, char)));
+                    }
+
                     ++pPtr[curLoopCount];
                     char** curPtr = &inst->ptr[i - 1];
                     for(unsigned int k = 0; k < vLoopCount[curLoopCount] - 1; ++k)
@@ -213,7 +224,10 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
     free(pPtr);
     free(ppFunc);
 #endif
+    // granted <elem>[i] exists
     inst->ptr[i] = NULL;
+    inst->pFunc[i] = NULL;
+    inst->size = curszPtr;
 }
 
 void regex_destruct(RegEx* inst)
@@ -222,38 +236,59 @@ void regex_destruct(RegEx* inst)
     free(inst->ptr);
 }
 
-int regex_match(char* regex, char* inst)
+// match = 1; 0 otherwise
+int regex_match(RegEx* regex, char* str)
 {
-    char* pRegex = regex;
-    char* pEl = inst;
-    while(*pEl)
+    char* curEl = str;
+    while(*curEl)
     {
-        if (*pEl != *pRegex) ++pEl;
-        else
+        char** curSymb = regex->ptr;
+        int (**curEx)(int, char) = regex->pFunc[0];
+        if ((*curEx)(*curEl, **curSymb))
         {
-
+            char* pcurEl = curEl + 1;
+            ++curSymb;
+            while(*pcurEl && *curSymb != NULL)
+            {
+                //printf("*curSymb = %c\n", *curSymb);
+                //printf("curEx = %p\n", curEx);
+                if (!(*curEx)(*pcurEl, **curSymb))
+                {
+                    printf("break;\n");
+                    break;
+                }
+                ++curEx;
+                ++pcurEl;
+                ++curSymb;
+            }
+            if (*curSymb == NULL) return 1;
         }
+        ++curEl;
     }
 
-    return 1;
+    return 0;
 }
 
 inline int __equal(int _first, char _second)
 {
+    printf("%c == %c\n", _first, _second);
     return (char)_first == _second;
 }
 
 inline int __noteq(int _first, char _second)
 {
+    printf("%c != %c\n", _first, _second);
     return (char)_first != _second;
 }
 
-inline int __isdigit(int _first, char)
+inline int __isdigit(int _first, char _second)
 {
+    printf("%c isdigit %c\n", _first, _second);
     return isdigit(_first);
 }
 
-inline int __isalpha(int _first, char)
+inline int __isalpha(int _first, char _second)
 {
+    printf("%c is alpha %c\n", _first, _second);
     return isalpha(_first);
 }
