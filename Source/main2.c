@@ -24,6 +24,7 @@ typedef struct _RegEx
 void regex_init(RegEx*, const char*);
 void regex_destruct(RegEx*);
 int regex_match(RegEx*, char*);
+void klini_match(char**, char**, int (**)(int, char));
 int __equal(int, char);
 int __noteq(int, char);
 int __isalpha(int, char);
@@ -43,6 +44,16 @@ int main()
     }
     RegEx inst1;
     regex_init(&inst1, regexstr);
+/*
+    size_t yu = 0ull;
+    while(inst1.ptr[yu] != NULL)
+    {
+        printf("%c", *inst1.ptr[yu]);
+        //printf("%p\n", inst1.pFunc[yu]);
+        //printf("%d\n", inst1.pFunc[yu](*inst1.ptr[yu], *inst1.ptr[yu]));
+        ++yu;
+    }
+*/
     unsigned char nMatch = 0u;
     for(size_t i = 0ull; i < K; ++i)
     {
@@ -53,16 +64,7 @@ int main()
         }
     }
     if (!nMatch) printf("none");
-/*
-    size_t yu = 0ull;
-    while(inst1.ptr[yu] != NULL)
-    {
-        printf("%c\n", *inst1.ptr[yu]);
-        printf("%p\n", inst1.pFunc[yu]);
-        printf("%d\n", inst1.pFunc[yu](*inst1.ptr[yu], *inst1.ptr[yu]));
-        ++yu;
-    }
-*/
+
     regex_destruct(&inst1);
 
     for(size_t i = 0ul; i < K; ++i)
@@ -120,11 +122,17 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
                 inst->pFunc[i++] = &__noteq;
                 regex += 2;
             }
-            else if (*regex == '<' || *regex == '>')
+            /*else if (*regex == '<')
             {
                 inst->ptr[i] = regex++;
                 inst->pFunc[i++] = NULL;
             }
+            else if (*regex == '>')
+            {
+                inst->ptr[i] = regex;
+                inst->pFunc[i++] = NULL;
+                regex += 2;
+            }*/
             else if (*regex != ')')
             {
                 inst->ptr[i] = regex++;
@@ -251,22 +259,54 @@ int regex_match(RegEx* regex, char* str)
     {
         char** curSymb = regex->ptr;
         int (**curEx)(int, char) = regex->pFunc;
-        if ((*curEx++)(*curEl, **curSymb++))
+        /*if (**curSymb == '<')   klini_match(&curEl, curSymb, curEx);
+        else */if ((*curEx++)(*curEl, **curSymb++))
         {   
             char* pcurEl = curEl + 1;
+            int flag = 1;
             while(*pcurEl && *curSymb != NULL)
             {
-                if (!(*curEx++)(*pcurEl++, **curSymb++))
+                /*if (**curSymb == '<')   klini_match(&curEl, curSymb, curEx);
+                else */if (!(*curEx++)(*pcurEl++, **curSymb++))
                 {
+                    flag = 0;
                     break;
                 }
             }
-            if (*curSymb == NULL) return 1;
+            if (flag) return 1;
         }
         ++curEl;
     }
 
     return 0;
+}
+
+void klini_match(char** pStr, char** pSymb, int (**pEx)(int, char))
+{
+    char* curEl = *pStr;
+    char** curSymb;
+    int (**curEx)(int, char);
+    while(*curEl)
+    {
+        curSymb = pSymb;
+        curEx = pEx;
+        while(*curEl && **curSymb != '>')
+        {
+            if (!(*curEx++)(*curEl++, **curSymb++))
+            {
+                break;
+            }
+        }
+        if (**curSymb == '>')
+        {
+            *pStr = curEl - 1;
+            if (!*curEl)
+            {
+                pSymb = curSymb + 1;
+                pEx = curEx + 1;
+            }
+        }
+    }
 }
 
 inline int __equal(int _first, char _second)
