@@ -48,21 +48,21 @@ int main()
     {
         if (regex_match(&inst1, pStr[i]))
         {
-            printf("%zu ", i + 1);
+            printf("%zu ", i);
+            ++nMatch;
         }
-        printf("\n");
     }
     if (!nMatch) printf("none");
-
+/*
     size_t yu = 0ull;
     while(inst1.ptr[yu] != NULL)
     {
         printf("%c\n", *inst1.ptr[yu]);
         printf("%p\n", inst1.pFunc[yu]);
-        printf("%d", inst1.pFunc[yu](*inst1.ptr[yu], *inst1.ptr[yu]));
+        printf("%d\n", inst1.pFunc[yu](*inst1.ptr[yu], *inst1.ptr[yu]));
         ++yu;
     }
-
+*/
     regex_destruct(&inst1);
 
     for(size_t i = 0ul; i < K; ++i)
@@ -120,6 +120,11 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
                 inst->pFunc[i++] = &__noteq;
                 regex += 2;
             }
+            else if (*regex == '<' || *regex == '>')
+            {
+                inst->ptr[i] = regex++;
+                inst->pFunc[i++] = NULL;
+            }
             else if (*regex != ')')
             {
                 inst->ptr[i] = regex++;
@@ -138,6 +143,7 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
                     }
 
                     ++pPtr;
+                    ++ppFunc;
                     char** curPtr = &inst->ptr[i - 1];
                     for(unsigned int k = 0; k < loopcount - 1; ++k)
                     {
@@ -164,6 +170,7 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
                     }
 
                     ++pPtr[curLoopCount];
+                    ++ppFunc[curLoopCount];
                     char** curPtr = &inst->ptr[i - 1];
                     for(unsigned int k = 0; k < vLoopCount[curLoopCount] - 1; ++k)
                     {
@@ -243,23 +250,16 @@ int regex_match(RegEx* regex, char* str)
     while(*curEl)
     {
         char** curSymb = regex->ptr;
-        int (**curEx)(int, char) = regex->pFunc[0];
-        if ((*curEx)(*curEl, **curSymb))
-        {
+        int (**curEx)(int, char) = regex->pFunc;
+        if ((*curEx++)(*curEl, **curSymb++))
+        {   
             char* pcurEl = curEl + 1;
-            ++curSymb;
             while(*pcurEl && *curSymb != NULL)
             {
-                //printf("*curSymb = %c\n", *curSymb);
-                //printf("curEx = %p\n", curEx);
-                if (!(*curEx)(*pcurEl, **curSymb))
+                if (!(*curEx++)(*pcurEl++, **curSymb++))
                 {
-                    printf("break;\n");
                     break;
                 }
-                ++curEx;
-                ++pcurEl;
-                ++curSymb;
             }
             if (*curSymb == NULL) return 1;
         }
@@ -271,24 +271,20 @@ int regex_match(RegEx* regex, char* str)
 
 inline int __equal(int _first, char _second)
 {
-    printf("%c == %c\n", _first, _second);
     return (char)_first == _second;
 }
 
 inline int __noteq(int _first, char _second)
 {
-    printf("%c != %c\n", _first, _second);
     return (char)_first != _second;
 }
 
 inline int __isdigit(int _first, char _second)
 {
-    printf("%c isdigit %c\n", _first, _second);
     return isdigit(_first);
 }
 
 inline int __isalpha(int _first, char _second)
 {
-    printf("%c is alpha %c\n", _first, _second);
     return isalpha(_first);
 }
