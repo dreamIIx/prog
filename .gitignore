@@ -7,3 +7,4 @@ build_d
 build_rls
 win_build_d.bat
 win_build_rls.bat
+test
