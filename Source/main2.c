@@ -53,7 +53,7 @@ int main()
     }
     RegEx inst1;
     regex_init(&inst1, regexstr);
-
+/*
     size_t yu = 0ull;
     while(inst1.ptr[yu] != NULL)
     {
@@ -62,7 +62,7 @@ int main()
         //printf("%d\n", inst1.pFunc[yu](*inst1.ptr[yu], *inst1.ptr[yu]));
         ++yu;
     }
-
+*/
     unsigned char nMatch = 0u;
     for(size_t i = 0ull; i < K; ++i)
     {
@@ -331,7 +331,8 @@ void klini_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* a
         curEx = *pEx + 1;
         while(*curEl && *curSymb && **curSymb != '>')
         {
-            if (!(*curEx++)(*curEl++, **curSymb++))
+            if (**curSymb == '<')   klini_match(&curEl, &curSymb, &curEx, aframe);
+            else if (!(*curEx++)(*curEl++, **curSymb++))
             {
                 break;
             }
