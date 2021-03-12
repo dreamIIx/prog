@@ -267,6 +267,7 @@ void regex_destruct(RegEx* inst)
 // match = 1; 0 otherwise
 int regex_match(RegEx* regex, char* str)
 {
+    // cause' chosen architecture, backtracers size will staticly lesser than _NBKTRCS (i.e without relloc)
     _pframe backtracers = (_pframe) malloc(_NBKTRCS * sizeof(_pframe));
     // granted backtracers[0].<all> = NULL
     backtracers[0].El = NULL;
