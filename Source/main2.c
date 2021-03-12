@@ -307,7 +307,7 @@ int regex_match(RegEx* regex, char* str)
                 }
             }
         }
-        if (flag) return 1;
+        if (flag && !*curSymb) return 1;
         //}
         ++curEl;
     }
