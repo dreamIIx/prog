@@ -24,7 +24,7 @@ typedef struct _RegEx
 
 typedef struct __frame
 {
-    char** El;
+    char* El;
     char** Symb;
     int (**Ex)(int, char);
 
@@ -290,16 +290,15 @@ int regex_match(RegEx* regex, char* str)
             if (**curSymb == '<')   klini_match(&pcurEl, &curSymb, &curEx, &curFrame);
             else if (!(*curEx++)(*pcurEl++, **curSymb++))
             {
-                if (*curFrame->El)
+                if (curFrame->El)
                 {
+                    pcurEl = curFrame->El;
+                    curSymb = curFrame->Symb;
+                    curEx = curFrame->Ex;
                     curFrame->El = NULL;
                     curFrame->Symb = NULL;
                     curFrame->Ex = NULL;
                     --curFrame;
-                    if (*curFrame->El)
-                    {
-
-                    }
                 }
                 else
                 {
@@ -343,9 +342,9 @@ void klini_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* a
             {
                 ++pFrame;
                 ++*aframe; // inc aframe outside
-                pFrame->El = pStr;
-                pFrame->Symb = endSymb;
-                pFrame->Ex = endEx;
+                pFrame->El = *pStr;
+                pFrame->Symb = curSymb + 1;
+                pFrame->Ex = curEx + 1;
 
                 endSymb = curSymb;
                 endEx = curEx;
