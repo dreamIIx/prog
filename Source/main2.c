@@ -6,6 +6,7 @@
 
 #define _SZSTRING (size_t)(1024)
 #define _SZEXPRE (size_t)(64)
+#define _NBKTRCS (size_t)(128)
 
 #define _RECURSIVE
 #if defined(_RECURSIVE)
@@ -21,10 +22,18 @@ typedef struct _RegEx
 
 } RegEx;
 
+typedef struct __frame
+{
+    char** El;
+    char** Symb;
+    int (**Ex)(int, char);
+
+} _frame, *_pframe;
+
 void regex_init(RegEx*, const char*);
 void regex_destruct(RegEx*);
 int regex_match(RegEx*, char*);
-void klini_match(char**, char**, int (**)(int, char));
+void klini_match(char**, char***, int (***)(int, char), _pframe*);
 int __equal(int, char);
 int __noteq(int, char);
 int __isalpha(int, char);
@@ -44,7 +53,7 @@ int main()
     }
     RegEx inst1;
     regex_init(&inst1, regexstr);
-/*
+
     size_t yu = 0ull;
     while(inst1.ptr[yu] != NULL)
     {
@@ -53,7 +62,7 @@ int main()
         //printf("%d\n", inst1.pFunc[yu](*inst1.ptr[yu], *inst1.ptr[yu]));
         ++yu;
     }
-*/
+
     unsigned char nMatch = 0u;
     for(size_t i = 0ull; i < K; ++i)
     {
@@ -122,17 +131,21 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
                 inst->pFunc[i++] = &__noteq;
                 regex += 2;
             }
-            /*else if (*regex == '<')
+            else if (*regex == '<')
             {
                 inst->ptr[i] = regex++;
-                inst->pFunc[i++] = NULL;
+                // duplicate for architecture
+                inst->pFunc[i] = inst->pFunc[i - 1];
+                ++i;
             }
             else if (*regex == '>')
             {
                 inst->ptr[i] = regex;
-                inst->pFunc[i++] = NULL;
+                // duplicate for architecture
+                inst->pFunc[i] = inst->pFunc[i - 1];
+                ++i;
                 regex += 2;
-            }*/
+            }
             else if (*regex != ')')
             {
                 inst->ptr[i] = regex++;
@@ -254,59 +267,94 @@ void regex_destruct(RegEx* inst)
 // match = 1; 0 otherwise
 int regex_match(RegEx* regex, char* str)
 {
+    _pframe backtracers = (_pframe) malloc(_NBKTRCS * sizeof(_pframe));
+    // granted backtracers[0].<all> = NULL
+    backtracers[0].El = NULL;
+    backtracers[0].Symb = NULL;
+    backtracers[0].Ex = NULL;
+    _pframe curFrame = backtracers;
+    
     char* curEl = str;
     while(*curEl)
     {
         char** curSymb = regex->ptr;
         int (**curEx)(int, char) = regex->pFunc;
-        /*if (**curSymb == '<')   klini_match(&curEl, curSymb, curEx);
-        else */if ((*curEx++)(*curEl, **curSymb++))
-        {   
-            char* pcurEl = curEl + 1;
-            int flag = 1;
-            while(*pcurEl && *curSymb != NULL)
+        /*if (**curSymb == '<')   klini_match(&curEl, &curSymb, &curEx, &curFrame);
+        else if ((*curEx++)(*curEl, **curSymb++))
+        {*/
+        //char* pcurEl = curEl + 1;
+        char* pcurEl = curEl;
+        int flag = 1;
+        while(*pcurEl && *curSymb)
+        {
+            if (**curSymb == '<')   klini_match(&pcurEl, &curSymb, &curEx, &curFrame);
+            else if (!(*curEx++)(*pcurEl++, **curSymb++))
             {
-                /*if (**curSymb == '<')   klini_match(&curEl, curSymb, curEx);
-                else */if (!(*curEx++)(*pcurEl++, **curSymb++))
+                if (*curFrame->El)
+                {
+                    curFrame->El = NULL;
+                    curFrame->Symb = NULL;
+                    curFrame->Ex = NULL;
+                    --curFrame;
+                    if (*curFrame->El)
+                    {
+
+                    }
+                }
+                else
                 {
                     flag = 0;
                     break;
                 }
             }
-            if (flag) return 1;
         }
+        if (flag) return 1;
+        //}
         ++curEl;
     }
 
+    free(backtracers);
     return 0;
 }
 
-void klini_match(char** pStr, char** pSymb, int (**pEx)(int, char))
+// get ptr to previous (actually current) _pframe, to write to current (next)
+void klini_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* aframe)
 {
     char* curEl = *pStr;
     char** curSymb;
     int (**curEx)(int, char);
+    char** endSymb = *pSymb;
+    int (**endEx)(int, char) = *pEx;
+    _pframe pFrame = *aframe;
     while(*curEl)
     {
-        curSymb = pSymb;
-        curEx = pEx;
-        while(*curEl && **curSymb != '>')
+        curSymb = *pSymb + 1;
+        curEx = *pEx + 1;
+        while(*curEl && *curSymb && **curSymb != '>')
         {
             if (!(*curEx++)(*curEl++, **curSymb++))
             {
                 break;
             }
         }
-        if (**curSymb == '>')
+        if (*curSymb)
         {
-            *pStr = curEl - 1;
-            if (!*curEl)
+            if (**curSymb == '>')
             {
-                pSymb = curSymb + 1;
-                pEx = curEx + 1;
+                ++pFrame;
+                ++*aframe; // inc aframe outside
+                pFrame->El = pStr;
+                pFrame->Symb = endSymb;
+                pFrame->Ex = endEx;
+
+                endSymb = curSymb;
+                endEx = curEx;
+                *pStr = curEl; // reset pStr outside
             }
         }
     }
+    *pSymb = endSymb + 1; // reset pSymb outside
+    *pEx = endEx + 1; // reset pEx outside
 }
 
 inline int __equal(int _first, char _second)
