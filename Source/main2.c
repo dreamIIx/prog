@@ -32,8 +32,7 @@ typedef struct __frame
 
 void regex_init(RegEx*, const char*);
 void regex_destruct(RegEx*);
-int regex_match(RegEx*, char*);
-int klini_match(char**, char***, int (***)(int, char), _pframe*, int);
+int regex_match(char**, char***, int (***)(int, char), _pframe*, int);
 char** __specfind(char**);
 int __equal(int, char);
 int __noteq(int, char);
@@ -67,13 +66,10 @@ int main()
     unsigned char nMatch = 0u;
     for(size_t i = 0ull; i < K; ++i)
     {
-        //if (regex_match(&inst1, pStr[i]))
         char* ppStr = pStr[i];
         char** ppSymb = inst1.ptr;
         int (**ppEx)(int, char) = inst1.pFunc;
-        //_frame frame;
-        //_pframe pframe = &frame;
-        if (klini_match(&ppStr, &ppSymb, &ppEx, NULL, 0))
+        if (regex_match(&ppStr, &ppSymb, &ppEx, NULL, 0))
         {
             printf("%zu ", i);
             ++nMatch;
@@ -130,7 +126,6 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
                 inst->ptr[i] = regex++;
                 if (*(regex++) == 'D')  inst->pFunc[i++] = &__isalpha; // check up condition
                 else                    inst->pFunc[i++] = &__isdigit;
-                //++regex;
             }
             else if (*regex == '~')
             {
@@ -271,61 +266,8 @@ void regex_destruct(RegEx* inst)
     free(inst->ptr);
 }
 
-// match = 1; 0 otherwise
-int regex_match(RegEx* regex, char* str)
-{
-    // cause' chosen architecture, backtracers size will staticly lesser than _NBKTRCS (i.e without relloc)
-    _pframe backtracers = (_pframe) malloc(_NBKTRCS * sizeof(_pframe));
-    // granted backtracers[0].<all> = NULL
-    backtracers[0].El = NULL;
-    backtracers[0].Symb = NULL;
-    backtracers[0].Ex = NULL;
-    _pframe curFrame = backtracers;
-    
-    char* curEl = str;
-    while(*curEl)
-    {
-        char** curSymb = regex->ptr;
-        int (**curEx)(int, char) = regex->pFunc;
-        /*if (**curSymb == '<')   klini_match(&curEl, &curSymb, &curEx, &curFrame);
-        else if ((*curEx++)(*curEl, **curSymb++))
-        {*/
-        //char* pcurEl = curEl + 1;
-        char* pcurEl = curEl;
-        int flag = 1;
-        while(*pcurEl && *curSymb)
-        {
-            if (**curSymb == '<')   klini_match(&pcurEl, &curSymb, &curEx, &curFrame, 1);
-            else if (!(*curEx++)(*pcurEl++, **curSymb++))
-            {
-                if (curFrame->El)
-                {
-                    pcurEl = curFrame->El;
-                    curSymb = curFrame->Symb;
-                    curEx = curFrame->Ex;
-                    curFrame->El = NULL;
-                    curFrame->Symb = NULL;
-                    curFrame->Ex = NULL;
-                    --curFrame;
-                }
-                else
-                {
-                    flag = 0;
-                    break;
-                }
-            }
-        }
-        if (flag && !*curSymb) return 1;
-        //}
-        ++curEl;
-    }
-
-    free(backtracers);
-    return 0;
-}
-
 // get ptr to previous (actually current) _pframe, to write to current (next)
-int klini_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* aframe, int req)
+int regex_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* aframe, int req)
 {
     // cause' chosen architecture, kbacktracers size will staticly lesser than _NBKTRCS (i.e without relloc)
     _pframe backtracers = (_pframe) malloc(_NBKTRCS * sizeof(_pframe));
@@ -333,19 +275,13 @@ int klini_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* af
     backtracers[0].El = NULL;
     backtracers[0].Symb = NULL;
     backtracers[0].Ex = NULL;
-    /*if (!req)
-    {
-        backtracers[1].El = *pStr + 1;
-        backtracers[1].Symb = *pSymb;
-        backtracers[1].Ex = *pEx;
-    }*/
-    _pframe curFrame = backtracers + 1;
+    _pframe curFrame = backtracers;
 
     char* curEl = *pStr;
     char** curSymb = *pSymb;
     int (**curEx)(int, char) = *pEx;
-    char** endSymb = __specfind(*pSymb);
-    int (**endEx)(int, char) = *pEx + (endSymb - *pSymb);
+    char** endSymb = NULL; int (**endEx)(int, char) = NULL; if (req){endSymb = __specfind(*pSymb); // LOOOOOOOOOOOOOK
+    endEx = *pEx + (endSymb - *pSymb);}
     while(*curEl)
     {
         while(*curEl && *curSymb)
@@ -354,7 +290,7 @@ int klini_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* af
             {
                 ++curSymb;
                 ++curEx;
-                klini_match(&curEl, &curSymb, &curEx, &curFrame, 1);
+                regex_match(&curEl, &curSymb, &curEx, &curFrame, 1);
             }
             else if (**curSymb == '>')
             {
@@ -365,13 +301,13 @@ int klini_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* af
                     (*aframe)->Symb = endSymb + 1;
                     (*aframe)->Ex = endEx + 1;
                 }
-                else 
+                /*else 
                 {
                     ++curFrame; // inc aframe outside
                     curFrame->El = *pStr;
                     curFrame->Symb = endSymb + 1;
                     curFrame->Ex = endEx + 1;
-                }
+                }*/
                 curSymb = *pSymb;
                 curEx = *pEx;
                 *pStr = curEl; // reset pStr outside
@@ -416,12 +352,6 @@ char** __specfind(char** begin)
     int count = 1;
     char** res = NULL;
     char** cur = begin;
-    while (*cur)
-    {
-        if (**cur == '<')    ++count;
-        ++cur;
-    }
-    cur = begin;
     while (*cur && count)
     {
         if (**cur == '>')
@@ -429,6 +359,7 @@ char** __specfind(char** begin)
             res = cur;
             --count;
         }
+        else if (**cur == '<')    ++count;
         ++cur;
     }
     return res;
