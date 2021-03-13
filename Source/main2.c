@@ -33,7 +33,8 @@ typedef struct __frame
 void regex_init(RegEx*, const char*);
 void regex_destruct(RegEx*);
 int regex_match(RegEx*, char*);
-void klini_match(char**, char***, int (***)(int, char), _pframe*);
+int klini_match(char**, char***, int (***)(int, char), _pframe*);
+char** __specfind(char**);
 int __equal(int, char);
 int __noteq(int, char);
 int __isalpha(int, char);
@@ -318,44 +319,114 @@ int regex_match(RegEx* regex, char* str)
 }
 
 // get ptr to previous (actually current) _pframe, to write to current (next)
-void klini_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* aframe)
+int klini_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* aframe)
 {
+    // cause' chosen architecture, kbacktracers size will staticly lesser than _NBKTRCS (i.e without relloc)
+    _pframe backtracers = (_pframe) malloc(_NBKTRCS * sizeof(_pframe));
+    // granted kbacktracers[0].<all> = NULL
+    backtracers[0].El = NULL;
+    backtracers[0].Symb = NULL;
+    backtracers[0].Ex = NULL;
+    _pframe curFrame = backtracers;
+
     char* curEl = *pStr;
-    char** curSymb;
-    int (**curEx)(int, char);
-    char** endSymb = *pSymb;
-    int (**endEx)(int, char) = *pEx;
-    _pframe pFrame = *aframe;
-    while(*curEl)
+    char** curSymb = NULL;
+    int (**curEx)(int, char) = NULL;
+    //char* pcurEl = NULL;
+    char** endSymb = __specfind(*pSymb);
+    int (**endEx)(int, char) = *pEx + (endSymb - *pSymb);
+    int flag = 1;
+    //while(*curEl)
+    //{
+        //curSymb = *pSymb + 1;
+        //curEx = *pEx + 1;
+        //pcurEl = curEl;
+    while(*curEl && *curSymb)
     {
-        curSymb = *pSymb + 1;
-        curEx = *pEx + 1;
-        while(*curEl && *curSymb && **curSymb != '>')
+        if (**curSymb == '<')   klini_match(&curEl, &curSymb, &curEx, &curFrame);
+        else if (**curSymb == '>')
         {
-            if (**curSymb == '<')   klini_match(&curEl, &curSymb, &curEx, aframe);
-            else if (!(*curEx++)(*curEl++, **curSymb++))
+            //++*aframe;
+            ++*aframe; // inc aframe outside
+            (*aframe)->El = *pStr;
+            (*aframe)->Symb = endSymb + 1;
+            (*aframe)->Ex = endEx + 1;
+
+            //endSymb = curSymb;
+            //endEx = curEx;
+            curSymb = *pSymb + 1;
+            curEx = *pEx + 1;
+            *pStr = curEl; // reset pStr outside
+        }
+        else if (!(*curEx++)(*curEl++, **curSymb++))
+        {
+            if (curFrame->El)
             {
+                curEl = curFrame->El;
+                curSymb = curFrame->Symb;
+                curEx = curFrame->Ex;
+                curFrame->El = NULL;
+                curFrame->Symb = NULL;
+                curFrame->Ex = NULL;
+                --curFrame;
+            }
+            else
+            {
+                flag = 0;
                 break;
             }
         }
-        if (*curSymb)
+        if (flag && !*curSymb) return 1;
+    }
+    /*if (*curSymb)
+    {
+        if (**curSymb == '>')
         {
-            if (**curSymb == '>')
-            {
-                ++pFrame;
-                ++*aframe; // inc aframe outside
-                pFrame->El = *pStr;
-                pFrame->Symb = curSymb + 1;
-                pFrame->Ex = curEx + 1;
+            //++*aframe;
+            ++*aframe; // inc aframe outside
+            (*aframe)->El = *pStr;
+            (*aframe)->Symb = endSymb + 1;
+            (*aframe)->Ex = endEx + 1;
 
-                endSymb = curSymb;
-                endEx = curEx;
-                *pStr = curEl; // reset pStr outside
-            }
+            //endSymb = curSymb;
+            //endEx = curEx;
+            curSymb = *pSymb + 1;
+            curEx = *pEx + 1;
+            *pStr = curEl; // reset pStr outside
         }
     }
+    else
+    {
+        //if (flag) return 1;
+    }*/
+    //}
     *pSymb = endSymb + 1; // reset pSymb outside
     *pEx = endEx + 1; // reset pEx outside
+
+    free(backtracers);
+}
+
+char** __specfind(char** begin)
+{
+    int count = 0;
+    char** res = NULL;
+    char** cur = begin;
+    while (*cur)
+    {
+        if (**cur == '<')    ++count;
+        ++cur;
+    }
+    cur = begin;
+    while (*cur && count)
+    {
+        if (**cur == '>')
+        {
+            res = cur;
+            --count;
+        }
+        ++cur;
+    }
+    return res;
 }
 
 inline int __equal(int _first, char _second)
