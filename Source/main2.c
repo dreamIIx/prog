@@ -53,16 +53,7 @@ int main()
     }
     RegEx inst1;
     regex_init(&inst1, regexstr);
-/*
-    size_t yu = 0ull;
-    while(inst1.ptr[yu] != NULL)
-    {
-        printf("%c", *inst1.ptr[yu]);
-        //printf("%p\n", inst1.pFunc[yu]);
-        //printf("%d\n", inst1.pFunc[yu](*inst1.ptr[yu], *inst1.ptr[yu]));
-        ++yu;
-    }
-*/
+	
     unsigned char nMatch = 0u;
     for(size_t i = 0ull; i < K; ++i)
     {
@@ -280,8 +271,13 @@ int regex_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* af
     char* curEl = *pStr;
     char** curSymb = *pSymb;
     int (**curEx)(int, char) = *pEx;
-    char** endSymb = NULL; int (**endEx)(int, char) = NULL; if (req){endSymb = __specfind(*pSymb); // LOOOOOOOOOOOOOK
-    endEx = *pEx + (endSymb - *pSymb);}
+    char** endSymb = NULL;
+	int (**endEx)(int, char) = NULL;
+	if (req)
+	{
+		endSymb = __specfind(*pSymb);
+		endEx = *pEx + (endSymb - *pSymb);
+	}
     while(*curEl)
     {
         while(*curEl && *curSymb)
@@ -294,20 +290,12 @@ int regex_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* af
             }
             else if (**curSymb == '>')
             {
-                if (req)
-                {
-                    ++*aframe; // inc aframe outside
-                    (*aframe)->El = *pStr;
-                    (*aframe)->Symb = endSymb + 1;
-                    (*aframe)->Ex = endEx + 1;
-                }
-                /*else 
-                {
-                    ++curFrame; // inc aframe outside
-                    curFrame->El = *pStr;
-                    curFrame->Symb = endSymb + 1;
-                    curFrame->Ex = endEx + 1;
-                }*/
+				// this lines can do only regex_match<req == 1>
+				++*aframe; // inc aframe outside
+				(*aframe)->El = *pStr;
+				(*aframe)->Symb = endSymb + 1;
+				(*aframe)->Ex = endEx + 1;
+					
                 curSymb = *pSymb;
                 curEx = *pEx;
                 *pStr = curEl; // reset pStr outside
