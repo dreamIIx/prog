@@ -4,6 +4,13 @@
 #include <string.h>
 #include <stddef.h>
 
+#ifndef ER_IF
+#define ER_IF(x, Exc) if ( (x) ) { Exc }
+#endif
+#ifndef ER_IFN
+#define ER_IFN(x, Exc) if ( !(x) ) { Exc }
+#endif
+
 #define _SZSTRING (size_t)(1024)
 #define _SZEXPRE (size_t)(64)
 #define _NBKTRCS (size_t)(128)
@@ -30,10 +37,12 @@ typedef struct __frame
 
 } _frame, *_pframe;
 
-void regex_init(RegEx*, const char*);
+int regex_init(RegEx*, const char*);
 void regex_destruct(RegEx*);
 int regex_match(char**, char***, int (***)(int, char), _pframe*, int);
 char** __specfind(char**);
+int spec_resize(size_t, char***, int (***)(int, char));
+void spec_add_nts(char**, int);
 int __equal(int, char);
 int __noteq(int, char);
 int __isalpha(int, char);
@@ -44,47 +53,48 @@ int main()
     size_t K;
     char regexstr[_SZEXPRE];
     scanf("%s", regexstr);
+    RegEx inst1;
+    ER_IFN(regex_init(&inst1, regexstr), regex_destruct(&inst1); return -1; )
+
     scanf("%zu", &K);
-    char* pStr[K];
+    char str[_SZSTRING];
+    // approximate ~(K * 2)
+    char resStr[K * 2];
+    char* pResStr = resStr;
+    unsigned char nMatch = 0u;
+    int res = 0;
     for(size_t i = 0ul; i < K; ++i)
     {
-        pStr[i] = (char*) malloc(_SZSTRING * sizeof(char));
-        scanf("%s", pStr[i]);
-    }
-    RegEx inst1;
-    regex_init(&inst1, regexstr);
-	
-    unsigned char nMatch = 0u;
-    for(size_t i = 0ull; i < K; ++i)
-    {
-        char* ppStr = pStr[i];
+        scanf("%s", str);
+        char* ppStr = str;
         char** ppSymb = inst1.ptr;
         int (**ppEx)(int, char) = inst1.pFunc;
-        if (regex_match(&ppStr, &ppSymb, &ppEx, NULL, 0))
+        if ((res = regex_match(&ppStr, &ppSymb, &ppEx, NULL, 0)) == 1)
         {
-            printf("%zu ", i);
+            spec_add_nts(&pResStr, i);
             ++nMatch;
         }
+        else if (res == -1)
+        {
+            regex_destruct(&inst1);
+            return -1;
+        }
     }
+    *pResStr = '\0';
     if (!nMatch) printf("none");
+    else printf("%s", resStr);
 
     regex_destruct(&inst1);
-
-    for(size_t i = 0ul; i < K; ++i)
-    {
-        free(pStr[i]);
-    }
-
     return 0;
 }
 
-void regex_init(RegEx* inst, const char str[_SZEXPRE])
+int regex_init(RegEx* inst, const char str[_SZEXPRE])
 {
     char* regex = strcpy(inst->regex, str);
 
     size_t curszPtr = _SZEXPRE;
-    inst->ptr = (char**) malloc(curszPtr * sizeof(char*));
-    inst->pFunc = (int (**)(int, char)) malloc(curszPtr * sizeof(int (*)(int, char)));
+    ER_IFN(inst->ptr = (char**) malloc(curszPtr * sizeof(char*)), return 0; )
+    ER_IFN(inst->pFunc = (int (**)(int, char)) malloc(curszPtr * sizeof(int (*)(int, char))), return 0; )
     size_t i = 0ull;
     int state = 0;
 #if !defined(_RECURSIVE)
@@ -92,9 +102,12 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
     char** pPtr = NULL;
     int (**ppFunc)(int, char) = NULL;
 #else
-    unsigned int* vLoopCount = (unsigned int*) calloc(_NRECCOUNT, sizeof(unsigned int));
-    char*** pPtr = (char***) malloc(_NRECCOUNT * sizeof(char**));
-    int (***ppFunc)(int, char) = (int (***)(int, char)) malloc(curszPtr * sizeof(int (**)(int, char)));
+    unsigned int* vLoopCount = NULL;
+    char*** pPtr = NULL;
+    int (***ppFunc)(int, char) = NULL;
+    ER_IFN(vLoopCount = (unsigned int*) calloc(_NRECCOUNT, sizeof(unsigned int)), return 0; )
+    ER_IFN(pPtr = (char***) malloc(_NRECCOUNT * sizeof(char**)), return 0; )
+    ER_IFN(ppFunc = (int (***)(int, char)) malloc(curszPtr * sizeof(int (**)(int, char))), return 0; )
     ptrdiff_t curLoopCount = -1l;
 #endif
     while(*regex)
@@ -102,8 +115,7 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
         if (i > curszPtr - 2)
         {
             curszPtr += _SZEXPRE;
-            inst->ptr = (char**) realloc(inst->ptr, curszPtr * sizeof(char*));
-            inst->pFunc = (int (**)(int, char)) realloc(inst->pFunc, curszPtr * sizeof(int (*)(int, char)));
+            ER_IFN(spec_resize(curszPtr, &inst->ptr, &inst->pFunc), return 0; )
         }
 
         if (!state)
@@ -115,8 +127,7 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
             else if (*regex == '\\')
             {
                 inst->ptr[i] = regex++;
-                if (*(regex++) == 'D')  inst->pFunc[i++] = &__isalpha; // check up condition
-                else                    inst->pFunc[i++] = &__isdigit;
+                inst->pFunc[i++] = (*(regex++) == 'D') ? &__isalpha : &__isdigit;
             }
             else if (*regex == '~')
             {
@@ -147,13 +158,12 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
             else
             {
 #if !defined(_RECURSIVE)
-                if (loopcount /*unnecessary but ->*/ && pPtr != NULL && ppFunc != NULL)
+                if (loopcount /*unnecessary but ->*/ && pPtr && ppFunc)
                 {
                     if (i > curszPtr - loopcount - 1)
                     {
                         curszPtr += i - loopcount + 2;
-                        inst->ptr = (char**) realloc(inst->ptr, curszPtr * sizeof(char*));
-                        inst->pFunc = (int (**)(int, char)) realloc(inst->pFunc, curszPtr * sizeof(int (*)(int, char)));
+                        ER_IFN(spec_resize(curszPtr, &inst->ptr, &inst->pFunc), return 0; )
                     }
 
                     ++pPtr;
@@ -174,13 +184,12 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
                 pPtr = NULL;
                 ppFunc = NULL;
 #else
-                if (vLoopCount[curLoopCount] /*unnecessary but ->*/ && pPtr[curLoopCount] != NULL && ppFunc[curLoopCount] != NULL)
+                if (vLoopCount[curLoopCount] /*unnecessary but ->*/ && pPtr[curLoopCount] && ppFunc[curLoopCount])
                 {
                     if (i > curszPtr - vLoopCount[curLoopCount] - 1)
                     {
                         curszPtr += i - vLoopCount[curLoopCount] + 2;
-                        inst->ptr = (char**) realloc(inst->ptr, curszPtr * sizeof(char*));
-                        inst->pFunc = (int (**)(int, char)) realloc(inst->pFunc, curszPtr * sizeof(int (*)(int, char)));
+                        ER_IFN(spec_resize(curszPtr, &inst->ptr, &inst->pFunc), return 0; )
                     }
 
                     ++pPtr[curLoopCount];
@@ -249,6 +258,8 @@ void regex_init(RegEx* inst, const char str[_SZEXPRE])
     inst->ptr[i] = NULL;
     inst->pFunc[i] = NULL;
     inst->size = curszPtr;
+
+    return 1;
 }
 
 void regex_destruct(RegEx* inst)
@@ -261,7 +272,8 @@ void regex_destruct(RegEx* inst)
 int regex_match(char** pStr, char*** pSymb, int (***pEx)(int, char), _pframe* aframe, int req)
 {
     // cause' chosen architecture, kbacktracers size will staticly lesser than _NBKTRCS (i.e without relloc)
-    _pframe backtracers = (_pframe) malloc(_NBKTRCS * sizeof(_pframe));
+    _pframe backtracers = NULL;
+    ER_IFN(backtracers = (_pframe) malloc(_NBKTRCS * sizeof(_pframe)), return -1; )
     // granted kbacktracers[0].<all> = NULL
     backtracers[0].El = NULL;
     backtracers[0].Symb = NULL;
@@ -353,6 +365,32 @@ char** __specfind(char** begin)
     return res;
 }
 
+// very specialized method :(
+int spec_resize(size_t new_size, char*** a1, int (***a2)(int, char))
+{
+    ER_IFN(*a1 = (char**) realloc(*a1, new_size * sizeof(char*)), return 0; )
+    ER_IFN(*a2 = (int (**)(int, char)) realloc(*a2, new_size * sizeof(int (*)(int, char))), return 0; )
+    return 1;
+}
+
+void spec_add_nts(char** astr, int num)
+{
+    int radix = 10;
+    while(num / radix > 0)    radix *= 10;
+
+    // better than while(n / (radix * 10) > 0)    radix *= 10;
+    radix /= 10;
+    while(radix > 0)
+    {
+        **astr = '0' + (num / radix);
+        num %= radix;
+        radix /= 10;
+        ++*astr;
+    }
+    **astr = ' ';
+    ++*astr;
+}
+
 inline int __equal(int _first, char _second)
 {
     return (char)_first == _second;
@@ -360,7 +398,7 @@ inline int __equal(int _first, char _second)
 
 inline int __noteq(int _first, char _second)
 {
-    return (char)_first != _second;
+    return !__equal(_first, _second);
 }
 
 inline int __isdigit(int _first, char _second)
