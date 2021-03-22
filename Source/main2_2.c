@@ -13,25 +13,25 @@
 
 #define _SZSTRING (size_t)(1024)
 #define _SZEXPRE (size_t)(64)
-#define _NBKTRCS (size_t)(128)
+#define _SZ4KLINI ((_SZEXPRE / 3) + 1) // motivated by: <>*<>*<>*...
 
 int regex_match(char**, char**, unsigned char);
 char* __specfind(char*);
 void spec_add_nts(char**, int);
 int __equal(int, char);
+void __free(void*, void*, void*);
 
 int main()
 {
-    size_t K;
+    size_t K;   
     char* regexstr = NULL;
     ER_IFN(regexstr = (char*) malloc(_SZEXPRE * sizeof(char)), return -1; )
     scanf("%s", regexstr);
-
     scanf("%zu", &K);
     char* str;
-    ER_IFN(str = (char*) malloc(_SZSTRING * sizeof(char)), return -1; )
+    ER_IFN(str = (char*) malloc(_SZSTRING * sizeof(char)), free(regexstr); return -1; )
     // approximate ~(K * 2)
-    char resStr[K * 2];
+    char resStr[K * 5];
     char* pResStr = resStr;
     unsigned char nMatch = 0u;
     int res = 0;
@@ -43,68 +43,71 @@ int main()
             spec_add_nts(&pResStr, i);
             ++nMatch;
         }
-        printf("%i\n", res);
     }
     *pResStr = '\0';
     if (!nMatch) printf("none");
     else printf("%s", resStr);
 
+    free(str);
+    free(regexstr);
+    
     return 0;
 }
 
 int regex_match(char** regex, char** str, unsigned char rec)
 {
     char* pStr = *str;
-    char* startkliniEl = NULL;
-    char* startklini = NULL;
-    char* endklini = NULL;
+    char** startkliniEl = NULL;
+    char** startklini = NULL;
+    char** endklini = NULL;
+    ER_IFN(startkliniEl = (char**) malloc(_SZ4KLINI * sizeof(char*)), return -1; )
+    ER_IFN(startklini = (char**) malloc(_SZ4KLINI * sizeof(char*)), free(startkliniEl); return -1; )
+    ER_IFN(endklini = (char**) malloc(_SZ4KLINI * sizeof(char*)), __free(startkliniEl, startklini, NULL); return -1; )
     char* fregex = *regex;
-    //if (rec == 2) fregex += 1;
-    int klinifound = 0;
+
+    ptrdiff_t kidx = 0;
+    ptrdiff_t curKidx = -1;
     while(*pStr != '\0')
     {
         char* curSymb = fregex;
         char* curEl = pStr;
-        if (klinifound)
+        if (kidx > 0)
         {
-            curSymb = startklini;
-            curEl = startkliniEl;
+            curSymb = startklini[curKidx];
+            curEl = startkliniEl[curKidx];
+            curKidx = --kidx;
         }
-        while(*curEl  != '\0' && *curSymb != '\0')
+        while(*curEl != '\0' && *curSymb != '\0')
         {
-            if (isalpha(*curSymb))
+            if (*curSymb == '~')
             {
-                if (!__equal(*curSymb++, *curEl++))
-                {
-                    break;
-                }
-            }
-            else if (*curSymb == '~')
-            {
-                if (__equal(*++curSymb, *curEl++))
+                ++curSymb;
+                if (__equal(*curSymb, *curEl))
                 {
                     break;
                 }
                 ++curSymb;
+                ++curEl;
             }
             else if (*curSymb == '\\')
             {
                 ++curSymb;
                 if (*curSymb == 'D')
                 {
-                    if (!isalpha(*curEl++))
+                    if (!isalpha(*curEl))
                     {
                         break;
                     }
                 }
                 else
                 {
-                    if (!isdigit(*curEl++))
+                    if (!isdigit(*curEl))
                     {
                         break;
                     }
                 }
                 ++curSymb;
+                ++curEl;
             }
             else if (*curSymb == '[')
             {
@@ -132,70 +135,104 @@ int regex_match(char** regex, char** str, unsigned char rec)
             }
             else if (*curSymb == '<')
             {
-                if (!klinifound)
+                if (kidx != curKidx)
                 {
-                    startklini = curSymb;
-                    startkliniEl = curEl;
-                    ER_IFN(endklini = __specfind(curSymb + 1) + 2, return 0; )
-                    if (*endklini != '\0')
+                    startklini[kidx] = curSymb;
+                    startkliniEl[kidx] = curEl;
+                    ER_IFN(endklini[kidx] = __specfind(curSymb + 1) + 2, __free(startkliniEl, startklini, endklini); return 0; )
+                    curKidx = kidx;
+                    if (*endklini[kidx] != '\0')
                     {
-                        klinifound = 1;
+                        ++kidx;
                     }
                     else
                     {
-                        ++curSymb;
-                        if (regex_match(&curSymb, &curEl, 2))
-                        {
-                            startkliniEl = curEl;
-                            klinifound = 1;
-                        }
+                        __free(startkliniEl, startklini, endklini);
+                        return 1;
                     }
-                    curSymb = endklini;
+                    curSymb = endklini[curKidx];
                 }
                 else
                 {
-                    klinifound = 0;
-                    curSymb = startklini + 1;
-                    curEl = startkliniEl;
-                    if (regex_match(&curSymb, &curEl, 2))
+                    curSymb = startklini[curKidx] + 1;
+                    curEl = startkliniEl[curKidx];
+                    int tobreak = 0;
+                    while(!regex_match(&curSymb, &curEl, 2))
                     {
-                        startkliniEl = curEl;
-                        klinifound = 1;
-                        curSymb = endklini;
+                        if (--kidx < 0)
+                        {
+                            tobreak = 1;
+                            --curKidx;
+                            break;
+                        }
+                        else
+                        {
+                            --curKidx;
+                            curSymb = startklini[curKidx] + 1;
+                            curEl = startkliniEl[curKidx];
+                        }
                     }
-                    else
-                    {
-                        curSymb = endklini;
-                        break;
-                    }
+                    ++kidx;
+                    if (tobreak) break;
+                    startkliniEl[curKidx] = curEl;
+                    curSymb = endklini[curKidx];
                 }
             }
+            // rec > 0 (can only do this, due to correctly granted input)
             else if (*curSymb == ')')
             {
-                if (rec)
-                {
-                    *regex = curSymb + 2;
-                    *str = curEl;
-                    return 1;
-                }
+                *regex = curSymb + 2;
+                *str = curEl;
+                __free(startkliniEl, startklini, endklini);
+                return 1;
             }
-            else if (*curSymb++ == '>')
+            else if (*curSymb == '>')
             {
-                if (rec)
+                *str = curEl;
+                __free(startkliniEl, startklini, endklini);
+                return 1;
+            }
+            // end rec > 0
+            else
+            {
+                if (!__equal(*curSymb, *curEl))
                 {
-                    *str = curEl;
-                    return 1;
+                    break;
                 }
+                ++curSymb;
+                ++curEl;
             }
         }
-        if (*curSymb == '\0') return 1;
-        if (!klinifound)
+        if (*curSymb == '\0')
         {
-            if (rec) return 0;
+            __free(startkliniEl, startklini, endklini);
+            return 1;
+        }
+        else if (*curSymb == ')')
+        {
+                *regex = curSymb + 2;
+                *str = curEl;
+                __free(startkliniEl, startklini, endklini);
+                return 1;
+        }   
+        else if (*curSymb == '>')
+        {
+                *str = curEl;
+                __free(startkliniEl, startklini, endklini);
+                return 1;
+        }
+        if (kidx <= 0)
+        {
+            if (rec)
+            {
+                __free(startkliniEl, startklini, endklini);
+                return 0;
+            }
             else ++pStr;
         }
     }
-    
+
+    __free(startkliniEl, startklini, endklini);
     return 0;
 }
 
@@ -238,4 +275,11 @@ void spec_add_nts(char** astr, int num)
 inline int __equal(int _first, char _second)
 {
     return (char)_first == _second;
+}
+
+void __free(void* first, void* second, void* third)
+{
+    free(first);
+    free(second);
+    free(third);
 }
