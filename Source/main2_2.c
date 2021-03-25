@@ -42,11 +42,11 @@ int main()
         {
             spec_add_nts(&pResStr, i);
             ++nMatch;
+            printf("%zu ", i);
         }
     }
     *pResStr = '\0';
     if (!nMatch) printf("none");
-    else printf("%s", resStr);
 
     free(str);
     free(regexstr);
@@ -139,14 +139,16 @@ int regex_match(char** regex, char** str, unsigned char rec)
                 {
                     startklini[kidx] = curSymb;
                     startkliniEl[kidx] = curEl;
-                    ER_IFN(endklini[kidx] = __specfind(curSymb + 1) + 2, __free(startkliniEl, startklini, endklini); return 0; )
+                    ER_IFN(endklini[kidx] = __specfind(curSymb + 1), __free(startkliniEl, startklini, endklini); return 0; )
+                    endklini[kidx] += 2;
                     curKidx = kidx;
-                    if (*endklini[kidx] != '\0')
+                    if (*endklini[kidx] != '\0' && *endklini[kidx] != '>')
                     {
                         ++kidx;
                     }
                     else
                     {
+                        *str = curEl;
                         __free(startkliniEl, startklini, endklini);
                         return 1;
                     }
