@@ -50,8 +50,8 @@
 
 #define nMATRIX                     (size_t)(100)
 #define szMATRIX                    (size_t)(64)
-#define _RAND_MAX_COUNTMTX          (int)(10)
-#define _RAND_MAX_DIMMTX            (int)(7)
+#define _RAND_MAX_COUNTMTX          (int)(100)
+#define _RAND_MAX_DIMMTX            (int)(8)
 #define _RAND_nSAMPLE               (int)(101)
 #define _RAND_DELT_SAMPLE           (int)(50)
 #define _default_input_str          "./input.txt"
@@ -81,6 +81,7 @@ int fillInput(mtx_t* mtx, datMtx* dat, char* input_str);
 int saveRes(mtx_t* mtx, datMtx* dat, short count, const char* output_str);
 int saveInf(datSample* datSample, short count, char* output_str);
 double det(mtx_t* mtx, unsigned long long* exc, short count, int k);
+void bubbleSort(datMtx* dat, short n, int (*cmp)(datMtx, datMtx));
 void heapify(datMtx* dat, short n, short i, int (*cmp)(datMtx, datMtx));
 void heapSort(datMtx* dat, short n, int (*cmp)(datMtx, datMtx));
 void swap(datMtx*, datMtx*);
@@ -150,10 +151,10 @@ int main(int argc, char** argv)
     max = infAlgo[0].M;
 #if defined(__unix__)
 #if defined(__linux__)
-    printf("#1: %lld %lc %Lf\n", infAlgo[0].M, L'±', infAlgo[0].Dis);
+    printf("HeapSort#1: %lld %lc %Lf\n", infAlgo[0].M, L'±', infAlgo[0].Dis);
 #endif
 #elif defined(_WIN32)
-    printf("#1: %I64d %C %l\n", infAlgo[0].M, L'±', infAlgo[0].Dis);
+    printf("HeapSort#1: %I64d %C %l\n", infAlgo[0].M, L'±', infAlgo[0].Dis);
 #else
     #error This operating system is not supported
 #endif
@@ -173,10 +174,59 @@ int main(int argc, char** argv)
         }
 #if defined(__unix__)
 #if defined(__linux__)
-        printf("#%d: %lld %lc %Lf\n", i - 1, infAlgo[i - 2].M, L'±', infAlgo[i - 2].Dis);
+        printf("HeapSort#%d: %lld %lc %Lf\n", i - 1, infAlgo[i - 2].M, L'±', infAlgo[i - 2].Dis);
 #endif
 #elif defined(_WIN32)
-        printf("#%d: %I64d %C %l\n", i - 1, infAlgo[i - 2].M, L'±', infAlgo[i - 2].Dis);
+        printf("HeapSort#%d: %I64d %C %l\n", i - 1, infAlgo[i - 2].M, L'±', infAlgo[i - 2].Dis);
+#else
+    #error This operating system is not supported
+#endif
+    }
+#if defined(__unix__)
+#if defined(__linux__)
+    printf("Sorting worked slower on %hd dataset[Average time = %lld]\n", iMax, max);
+    printf("Sorting worked all the fastest on %hd dataset[Average time = %lld]", iMin, min);
+#endif
+#elif defined(_WIN32)
+    printf("Sorting worked slower on %hd dataset[Average time = %I64d]\n", iMax, max);
+    printf("Sorting worked all the fastest on %hd dataset[Average time = %I64d]", iMin, min);
+#else
+    #error This operating system is not supported
+#endif
+
+    printf("Algorithm running time on each dataset(in nanoseconds):\n");
+    ER_IF(specCountFunc(mtx, dat, &bubbleSort, &_mtx_el_greater, infAlgo, count, argv[2]), __free return -1; )
+    min = infAlgo[0].M;
+    max = infAlgo[0].M;
+#if defined(__unix__)
+#if defined(__linux__)
+    printf("BubbleSort#1: %lld %lc %Lf\n", infAlgo[0].M, L'±', infAlgo[0].Dis);
+#endif
+#elif defined(_WIN32)
+    printf("BubbleSort#1: %I64d %C %l\n", infAlgo[0].M, L'±', infAlgo[0].Dis);
+#else
+    #error This operating system is not supported
+#endif
+
+    for(int i = 3; i < argc; ++i)
+    {
+        ER_IF(specCountFunc(mtx, dat, &bubbleSort, &_mtx_el_greater, &infAlgo[i - 2], count, argv[i]), __free return -1; )
+        if (min > infAlgo[i - 2].M)
+        {
+            iMin = i;
+            min = infAlgo[i - 2].M;
+        }
+        if (max < infAlgo[i - 2].M)
+        {
+            iMax = i;
+            max = infAlgo[i - 2].M;
+        }
+#if defined(__unix__)
+#if defined(__linux__)
+        printf("BubbleSort#%d: %lld %lc %Lf\n", i - 1, infAlgo[i - 2].M, L'±', infAlgo[i - 2].Dis);
+#endif
+#elif defined(_WIN32)
+        printf("BubbleSort#%d: %I64d %C %l\n", i - 1, infAlgo[i - 2].M, L'±', infAlgo[i - 2].Dis);
 #else
     #error This operating system is not supported
 #endif
@@ -297,9 +347,11 @@ int specCountFunc(mtx_t* mtx, datMtx* dat, void (*sortFunc)(datMtx*, short, int 
 int createInput(mtx_t* mtx, datMtx* dat)
 {
     short count = _rand() % _RAND_MAX_COUNTMTX + 1;
+    //printf("Count rand matrix: %hd[", count);
     for(short k = 0; k < count; ++k)
     {
         short curDim = _rand() % _RAND_MAX_DIMMTX + 1;
+        //printf("%hd, ", curDim);
         dat[k].dim = curDim;
         for(short i = 0; i < curDim; ++i)
         {
@@ -312,6 +364,7 @@ int createInput(mtx_t* mtx, datMtx* dat)
         unsigned long long exc = 0ull;
         dat[k].det = det(mtx + k * szMATRIX * szMATRIX, &exc, curDim, 0);
     }
+    //printf("]\n");
 
     return count;
 }
@@ -443,12 +496,21 @@ void heapify(datMtx* dat, short n, short i, int (*cmp)(datMtx, datMtx))
         {
             if (cmp(dat[right], dat[largest])) largest = right;
         }
-    
-        if (largest != i)
-        {
-            //heapify(dat, n, largest, cmp);
-        }
     } while(largest != i);
+}
+
+void bubbleSort(datMtx* dat, short n, int (*cmp)(datMtx, datMtx))
+{
+    for(size_t i = 0ul; i < n; ++i)
+    {
+        for(size_t j = 0ul; j < n - i - 1; ++j)
+        {
+            if (cmp(dat[j], dat[j + 1]))
+            {
+                swap(&dat[i], &dat[j]);
+            }
+        }
+    }
 }
 
 void heapSort(datMtx* dat, short n, int (*cmp)(datMtx, datMtx))
