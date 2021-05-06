@@ -45,6 +45,7 @@ int sizeTree(pTreeNode);
 void printTree(pTreeNode);
 void printTreeLevel(FILE*, pTreeNode, int);
 pBTreeNode insertBTreeNode(pBTreeNode, void*, size_t);
+pBTreeNode removeBTreeElem(pBTreeNode, void*);
 pListNode findBTreeStrElem(pBTreeNode, char*);
 pBTreeNode eraseBTree(pBTreeNode);
 void printStrBTree(pBTreeNode);
@@ -75,9 +76,9 @@ int main()
     {
         strtok(str, ".");
         mainroot = insertTreeNode(mainroot, str);
+        btreeroot = insertBTreeNode(btreeroot, str, szSTR_BUF);
         printStrBTree(btreeroot);
         printf("\n");
-        btreeroot = insertBTreeNode(btreeroot, str, szSTR_BUF);
         fscanf(filetag, "%s", str);
     }
     fscanf(filetag, "%s", str);
@@ -99,7 +100,10 @@ int main()
     pListNode tempFoundStr = findBTreeStrElem(btreeroot, "dlkfwe1pk");
     if (tempFoundStr) printf("\nfind1: %s\n", (char*)tempFoundStr->data);
 
+    btreeroot = removeBTreeElem(btreeroot, "can't");
+    printf("remove:\n");
     printStrBTree(btreeroot);
+    printf("\n");
     free(str);
     eraseTree(mainroot);
     printf("---------------------\n");
@@ -329,6 +333,7 @@ pBTreeNode removeBTreeElem(pBTreeNode root, void* str)
         if (!(res = strcmp((char*)curnode->data, (char*)str)))
         {
             root->vals = removeListNodeByN(root->vals, i);
+            --root->size;
             return root;
         }
         if (res > 0)  break;
@@ -336,63 +341,52 @@ pBTreeNode removeBTreeElem(pBTreeNode root, void* str)
     }
     if ((curnode = findListNode(root->elem, i)))
     {
-        pBTreeNode seek = removeBTreeElem((pBTreeNode)curnode->data, str);
+        pBTreeNode seek = (pBTreeNode)curnode->data;
+        seek = removeBTreeElem((pBTreeNode)curnode->data, str);
         if (seek->size < kBTREE - 1)
         {
-            if (i)
+            size_t neighbour = 0ul;
+            if (i)  neighbour = i - 1;
+            else    neighbour = i + 1;
+            if (seek->size + ((pBTreeNode)findListNode(root->elem, neighbour)->data)->size > 2 * kBTREE - 2) // (... + 1 > ... - 1) |---> (.. > ... -2)
             {
-                if (seek->size + ((pBTreeNode)findListNode(root->elem, i - 1)->data)->size > 2 * kBTREE - 2) // (... + 1 > ... - 1) |---> (.. > ... -2)
-                {
-                    pListNode temp = ((pBTreeNode)curnode->data)->vals;
-                    pListNode temp2 = findListNode(root->vals, i)->next;
-                    temp = insertListNodeTo(temp, 0, findListNode(root->vals, i));
-                    findListNode(root->vals, i - 1)->next = temp2;
+                pListNode temp = seek->vals;
+                pListNode temp2 = findListNode(root->vals, i)->next;
+                temp = insertListNodeTo(temp, 0, findListNode(root->vals, i));
+                findListNode(root->vals, neighbour)->next = temp2;
 
-                    temp = ((pBTreeNode)curnode->data)->elem;
-                    curnode = findListNode(root->elem, i - 1);
-                    temp = insertListNodeTo(temp, 0, ((pBTreeNode)curnode->data)->size);
-                    findListNode(curnode, ((pBTreeNode)curnode->data)->size - 1)->next = NULL;
+                temp = seek->elem;
+                curnode = findListNode(root->elem, neighbour);
+                seek = ((pBTreeNode)curnode->data);
+                temp = insertListNodeTo(temp, 0, findListNode(seek->elem, seek->size));
+                findListNode(seek->elem, seek->size - 1)->next = NULL;
+                printf("\n%I64d\n", seek->size);
+                ++seek->size;
+                printf("\n%I64d\n", seek->size);
 
-                    printf("\n%d\n", ((pBTreeNode)curnode->data)->size);
-                    ++((pBTreeNode)curnode->data)->size;
-                    printf("\n%d\n", ((pBTreeNode)curnode->data)->size);
-
-                    temp = findListNode(((pBTreeNode)curnode->data)->vals, ((pBTreeNode)curnode->data)->size - 1);
-                    root->vals = inserListNodeTo(root->vals, i, temp);
-                    findListNode(((pBTreeNode)curnode->data)->vals, ((pBTreeNode)curnode->data)->size - 2)->next = NULL;
-                    printf("\n%d\n", ((pBTreeNode)curnode->data)->size);
-                    --((pBTreeNode)curnode->data)->size;
-                    printf("\n%d\n", ((pBTreeNode)curnode->data)->size);
-                }
-                else
-                {
-                    pListNode temp = findListNode(((pBTreeNode)curnode->data)->vals, ((pBTreeNode)curnode->data)->size - 1);
-                    ((pBTreeNode)curnode->data)->size += seek->size;
-                    sizeNode = ((pBTreeNode)curnode->data)->size;
-                    curnode->next = seek->vals;
-                    curnode = findListNode(((pBTreeNode)curnode->data)->elem, ((pBTreeNode)curnode->data)->size);
-                    curnode->next = seek->elem;
-                    root->elem = excludeListNode(root->elem, i);
-                }
+                temp = findListNode(seek->vals, seek->size - 1);
+                root->vals = insertListNodeTo(root->vals, i, temp);
+                findListNode(seek->vals, seek->size - 2)->next = NULL;
+                printf("\n%I64d\n", seek->size);
+                --seek->size;
+                printf("\n%I64d\n", seek->size);
             }
             else
             {
-                curnode = findListNode(root->elem, i + 1);
-                curnode = findListNode(((pBTreeNode)curnode->data)->vals, ((pBTreeNode)curnode->data)->size - 1);
-                ((pBTreeNode)curnode->data)->size += seek->size;
-                sizeNode = ((pBTreeNode)curnode->data)->size;
-                curnode->next = seek->vals;
-                curnode = findListNode(((pBTreeNode)curnode->data)->elem, ((pBTreeNode)curnode->data)->size);
-                curnode->next = seek->elem;
-                root->elem = excludeListNode(root->elem, i);
-            }
-            if (sizeNode > 2 * kBTREE - 1)
-            {s
-
+                curnode = findListNode(root->elem, neighbour);
+                pBTreeNode temp = ((pBTreeNode)curnode->data);
+                pListNode temp2 = findListNode(root->vals, i)->next;
+                temp->vals = insertListNodeTo(temp->vals, temp->size, findListNode(root->vals, i));
+                findListNode(root->vals, neighbour)->next = temp2;
+                findListNode(temp->vals, seek->size - 1)->next = seek->vals;
+                findListNode(temp->elem, seek->size)->next = seek->elem;
+                root->elem = removeListNodeByN(root->elem, i + 1);
+                --root->size;
+                temp->size += seek->size + 1;
             }
         }
+        return root;
     }
-    root->vals = removeListNodeByN(root->vals, i);
     return root;
 }
 
