@@ -11,8 +11,8 @@
 
 #define szSTR_BUF   (256 * sizeof(char))
 #define kBTREE      (3)
-#define LOW_BOUND_kBTREE (2)
-#if (kBTREE <= LOW_BOUND_kBTREE)
+#define LOW_BOUND_kBTREE (3)
+#if (kBTREE < LOW_BOUND_kBTREE)
 #error "the lower limit of <kBTREE> is violated"
 #endif
 
@@ -38,21 +38,27 @@ typedef struct BTreeNode_
 
 pTreeNode insertTreeNode(pTreeNode, char*);
 pTreeNode seekMostLeftAndRemove(pTreeNode);
+pTreeNode findTreeNode(pTreeNode, char*);
 pTreeNode removeTreeNode(pTreeNode, char*);
 pTreeNode eraseTree(pTreeNode);
 int sizeTree(pTreeNode);
 void printTree(pTreeNode);
 void printTreeLevel(FILE*, pTreeNode, int);
 pBTreeNode insertBTreeNode(pBTreeNode, void*, size_t);
+pBTreeNode removeBTreeElem(pBTreeNode, void*);
+pListNode findBTreeStrElem(pBTreeNode, char*);
 pBTreeNode eraseBTree(pBTreeNode);
 void printStrBTree(pBTreeNode);
 pListNode copyData2ListNode(pListNode, void*, size_t);
-pListNode insertData2ListNode(pListNode, void*, size_t);
+pListNode insertData2ListNode(pListNode, void*);
+pListNode insertListNode(pListNode, pListNode);
 pListNode copyData2ListNodeTo(pListNode, size_t, void*, size_t);
-pListNode insertData2ListNodeTo(pListNode, size_t, void*, size_t);
+pListNode insertData2ListNodeTo(pListNode, size_t, void*);
+pListNode insertListNodeTo(pListNode, size_t, pListNode);
 pListNode findListNode(pListNode, size_t);
 pListNode excludeListNode(pListNode, size_t);
-pListNode removeListNode(pListNode, size_t);
+pListNode removeListNodeByN(pListNode, size_t);
+pListNode removeListNodeByVal(pListNode, void*);
 pListNode eraseList(pListNode);
 void printStrList(pListNode);
 
@@ -61,7 +67,7 @@ int main()
     FILE* filetag;
     char* str = (char*) malloc(szSTR_BUF);
     pTreeNode mainroot = NULL;
-    //pBTreeNode btreeroot = NULL;
+    pBTreeNode btreeroot = NULL;
 
     filetag = fopen("input.txt", "r");
     fscanf(filetag, "%s", str);
@@ -70,9 +76,9 @@ int main()
     {
         strtok(str, ".");
         mainroot = insertTreeNode(mainroot, str);
-        //printStrBTree(btreeroot);
-        //printf("\n");
-        //btreeroot = insertBTreeNode(btreeroot, str, szSTR_BUF);
+        btreeroot = insertBTreeNode(btreeroot, str, szSTR_BUF);
+        printStrBTree(btreeroot);
+        printf("\n");
         fscanf(filetag, "%s", str);
     }
     fscanf(filetag, "%s", str);
@@ -91,10 +97,17 @@ int main()
     printTreeLevel(filetag, mainroot, k_level);
     fclose(filetag);
 
-    //printStrBTree(btreeroot);
+    pListNode tempFoundStr = findBTreeStrElem(btreeroot, "dlkfwe1pk");
+    if (tempFoundStr) printf("\nfind1: %s\n", (char*)tempFoundStr->data);
+
+    btreeroot = removeBTreeElem(btreeroot, "1");
+    printf("remove:\n");
+    printStrBTree(btreeroot);
+    printf("\n");
     free(str);
     eraseTree(mainroot);
-    //eraseBTree(btreeroot);
+    printf("---------------------\n");
+    eraseBTree(btreeroot);
 
     return 0;
 }
@@ -105,7 +118,7 @@ pTreeNode insertTreeNode(pTreeNode root, char* str)
     {
         root = (pTreeNode) malloc(sizeof(TreeNode));
         ER_IFN(root, return NULL; )
-        root->value = (char*) malloc(szSTR_BUF/*strlen(str) * sizeof(char)*/);
+        root->value = (char*) malloc(szSTR_BUF);
         strcpy(root->value, str);
         root->right = NULL;
         root->left = NULL;
@@ -130,6 +143,14 @@ pTreeNode seekMostLeftAndRemove(pTreeNode node)
     pTreeNode res = seekMostLeftAndRemove(node->left);
     if (node->left == res)   node->left = res->right; // D:
     return res;
+}
+
+pTreeNode findTreeNode(pTreeNode root, char* str)
+{
+    int res = 0;
+    if (root == NULL || !(res = strcmp(root->value, str))) return root;
+    if (res > 0) return findTreeNode(root->left, str);
+    return findTreeNode(root->right, str);
 }
 
 pTreeNode removeTreeNode(pTreeNode root, char* str)
@@ -245,7 +266,6 @@ pBTreeNode insertBTreeNode(pBTreeNode root, void* str, size_t size)
     }
     if (root->size == 2 * kBTREE - 1)
     {
-        //printf("%zu\n", root->size);
         pBTreeNode new_root = (pBTreeNode) malloc(sizeof(BTreeNode));
         ER_IFN(new_root, return root; )
         pBTreeNode right_branch = (pBTreeNode) malloc(sizeof(BTreeNode));
@@ -268,43 +288,31 @@ pBTreeNode insertBTreeNode(pBTreeNode root, void* str, size_t size)
         new_root->size = 1ul;
         findListNode(root->vals, kBTREE - 2)->next = NULL;
         root->size = kBTREE - 1;
-        //p/rintf("-----\n");
-        //pintStrBTree(new_root);
 
         new_root->elem = NULL;
-        new_root->elem = insertData2ListNode(new_root->elem, root, sizeof(BTreeNode));
-        new_root->elem = insertData2ListNode(new_root->elem, right_branch, sizeof(BTreeNode));
-        /*printf("-----\n");
-        printStrBTree(root);
-        printf("-----\n");
-        printStrBTree(right_branch);
-        printf("-----\n");*/
+        new_root->elem = insertData2ListNode(new_root->elem, root);
+        new_root->elem = insertData2ListNode(new_root->elem, right_branch); 
         root = new_root;
-        //printStrBTree(root);
-        //printf("-----\n");
     }
     pListNode curnode = NULL;
     size_t i = 0ul;
+    int res = 0;
     while((curnode = findListNode(root->vals, i)))
     {
-        if (strcmp((char*)curnode->data, (char*)str) == 0) return root;
-        if (strcmp((char*)curnode->data, (char*)str) > 0)  break;
+        if (!(res = strcmp((char*)curnode->data, (char*)str))) return root;
+        if (res > 0)  break;
         ++i;
     }
     pBTreeNode seek = NULL;
-    if ((curnode = findListNode(root->elem, i)) && (seek = (pBTreeNode)curnode->data))
+    if ((curnode = findListNode(root->elem, i)))
     {
-        seek = insertBTreeNode(seek, str, size);
-        if (seek->size == 1ul/*seek->size < kBTREE - 1*/)
+        seek = insertBTreeNode((pBTreeNode)curnode->data, str, size);
+        if (seek->size == 1ul)
         {
-            /*printStrBTree(seek);
-            printf("-----\n");
-            printStrBTree(root);
-            printf("-----\n");*/
-            root->vals = insertData2ListNodeTo(root->vals, i, seek->vals->data, size);
-            root->elem = insertData2ListNodeTo(root->elem, i, seek->elem->next->data, size);
-            root->elem = insertData2ListNodeTo(root->elem, i, seek->elem->data, size);
-            //root->elem = excludeListNode(root->elem, i + 2);
+            root->elem = excludeListNode(root->elem, i);
+            root->vals = insertData2ListNodeTo(root->vals, i, seek->vals->data);
+            root->elem = insertListNodeTo(root->elem, i, seek->elem->next);
+            root->elem = insertListNodeTo(root->elem, i, seek->elem);
             ++root->size;
         }
         return root;
@@ -312,6 +320,98 @@ pBTreeNode insertBTreeNode(pBTreeNode root, void* str, size_t size)
     root->vals = copyData2ListNodeTo(root->vals, i, str, size);
     ++root->size;
     return root;
+}
+
+pBTreeNode removeBTreeElem(pBTreeNode root, void* str)
+{
+    if (root == NULL) return root;
+    pListNode curnode = NULL;
+    ptrdiff_t i = 0ul;
+    int res = 0;
+    while((curnode = findListNode(root->vals, i)))
+    {
+        if (!(res = strcmp((char*)curnode->data, (char*)str)))
+        {
+            root->vals = removeListNodeByN(root->vals, i);
+            --root->size;
+            return root;
+        }
+        if (res > 0)  break;
+        ++i;
+    }
+    if ((curnode = findListNode(root->elem, i)))
+    {
+        curnode->data = removeBTreeElem((pBTreeNode)curnode->data, str);
+        if (((pBTreeNode)curnode->data)->size < kBTREE - 1)
+        {
+            ptrdiff_t neighbour = 0ul;
+            if (i > 0)  neighbour = i - 1;
+            else        neighbour = i + 1;
+            if (((pBTreeNode)curnode->data)->size + ((pBTreeNode)findListNode(root->elem, neighbour)->data)->size > 2 * kBTREE - 2) // (... + 1 > ... - 1) |---> (.. > ... -2)
+            {
+                if (i == 0)  neighbour = i;
+                pListNode temp2 = findListNode(root->vals, neighbour);
+                if (neighbour)      findListNode(root->vals, neighbour - 1)->next = temp2->next;
+                else                root->vals = temp2->next;
+                ((pBTreeNode)curnode->data)->vals = insertListNodeTo(((pBTreeNode)curnode->data)->vals, 0, temp2);
+                ++((pBTreeNode)curnode->data)->size;
+
+                if (i == 0)  neighbour = i + 1;
+                curnode = findListNode(root->elem, neighbour);
+                if (((pBTreeNode)curnode->data)->elem)
+                {
+                    ((pBTreeNode)curnode->data)->elem = insertListNodeTo(((pBTreeNode)curnode->data)->elem, 0, findListNode(((pBTreeNode)curnode->data)->elem, ((pBTreeNode)curnode->data)->size));
+                    findListNode(((pBTreeNode)curnode->data)->elem, ((pBTreeNode)curnode->data)->size - 1)->next = NULL;
+                }
+
+                if (i == 0)  neighbour = i;
+                pListNode temp = findListNode(((pBTreeNode)curnode->data)->vals, ((pBTreeNode)curnode->data)->size - 1);
+                root->vals = insertListNodeTo(root->vals, neighbour, temp);
+                findListNode(((pBTreeNode)curnode->data)->vals, ((pBTreeNode)curnode->data)->size - 2)->next = NULL;
+                --((pBTreeNode)curnode->data)->size;
+            }
+            else
+            {
+                if (i == 0)  neighbour = i;
+                pListNode temp2 = findListNode(root->vals, neighbour);
+                if (neighbour)      findListNode(root->vals, neighbour - 1)->next = temp2->next;
+                else                root->vals = temp2->next;
+                printf("print:\n");
+                printStrBTree(root);
+                printf("\n");
+
+                if (i == 0)  neighbour = i + 1;
+                pListNode temp = findListNode(root->elem, neighbour);
+                ((pBTreeNode)temp->data)->vals = insertListNodeTo(((pBTreeNode)temp->data)->vals, ((pBTreeNode)temp->data)->size, temp2);
+                if (((pBTreeNode)temp->data)->elem)
+                {
+                    findListNode(((pBTreeNode)temp->data)->elem, ((pBTreeNode)temp->data)->size)->next = ((pBTreeNode)curnode->data)->elem;
+                }
+                findListNode(((pBTreeNode)temp->data)->vals, ((pBTreeNode)temp->data)->size)->next = ((pBTreeNode)curnode->data)->vals;
+                --root->size;
+                ((pBTreeNode)temp->data)->size += ((pBTreeNode)curnode->data)->size + 1;
+                root->elem = excludeListNode(root->elem, i);
+            }
+        }
+        return root;
+    }
+    return root;
+}
+
+pListNode findBTreeStrElem(pBTreeNode root, char* str)
+{
+    if (root == NULL) return NULL;
+    pListNode curnode = NULL;
+    size_t i = 0ul;
+    int res = 0;
+    while((curnode = findListNode(root->vals, i)))
+    {
+        if (!(res = strcmp((char*)curnode->data, str))) return curnode;
+        if (res > 0) break;
+        ++i;
+    }
+    if ((curnode = findListNode(root->elem, i)))    return findBTreeStrElem((pBTreeNode)curnode->data, str);
+    return NULL;
 }
 
 void printStrBTree(pBTreeNode root)
@@ -341,10 +441,7 @@ pBTreeNode eraseBTree(pBTreeNode root)
         seek = eraseBTree(seek);
     }
     eraseList(root->vals);
-    eraseList(root->elem);
-    root->size = 0ul;
-    root->vals = NULL;
-    root->elem = NULL;
+    free(root);
     root = NULL;
     return root;
 }
@@ -365,19 +462,28 @@ pListNode copyData2ListNode(pListNode root, void* data, size_t size)
     return root;
 }
 
-pListNode insertData2ListNode(pListNode root, void* data, size_t size)
+pListNode insertData2ListNode(pListNode root, void* data)
 {
     if (root == NULL)
     {
         root = (pListNode) malloc(sizeof(ListNode));
         ER_IFN(root, return NULL; )
-        root->data = malloc(size);
-        ER_IFN(root->data, free(root); return NULL; )
         root->data = data;
         root->next = NULL;
         return root;
     }
-    root->next = insertData2ListNode(root->next, data, size);
+    root->next = insertData2ListNode(root->next, data);
+    return root;
+}
+
+pListNode insertListNode(pListNode root, pListNode node)
+{
+    if (root == NULL)
+    {
+        node->next = NULL;
+        return root;
+    }
+    root->next = insertListNode(root->next, node);
     return root;
 }
 
@@ -393,23 +499,35 @@ pListNode copyData2ListNodeTo(pListNode root, size_t n, void* data, size_t size)
         node->next = root;
         return node;
     }
+    if (root == NULL) return root;
     root->next = copyData2ListNodeTo(root->next, n - 1, data, size);
     return root;
 }
 
-pListNode insertData2ListNodeTo(pListNode root, size_t n, void* data, size_t size)
+pListNode insertData2ListNodeTo(pListNode root, size_t n, void* data)
 {
     if (!n)
     {
         pListNode node = (pListNode) malloc(sizeof(ListNode));
         ER_IFN(node, return NULL; )
-        node->data = malloc(size);
-        ER_IFN(node->data, free(node); return NULL; )
         node->data = data;
         node->next = root;
         return node;
     }
-    root->next = insertData2ListNodeTo(root->next, n - 1, data, size);
+    if (root == NULL) return root;
+    root->next = insertData2ListNodeTo(root->next, n - 1, data);
+    return root;
+}
+
+pListNode insertListNodeTo(pListNode root, size_t n, pListNode node)
+{
+    if (!n)
+    {
+        node->next = root;
+        return node;
+    }
+    if (root == NULL) return root;
+    root->next = insertListNodeTo(root->next, n - 1, node);
     return root;
 }
 
@@ -419,39 +537,49 @@ pListNode findListNode(pListNode root, size_t n)
     if (n > 0) return findListNode(root->next, n - 1);
     return root;
 }
-/*
-int _removeListNode(pListNode parent, pListNode root, size_t n)
-{
-    if (root == NULL) return 1;
-    if (n > 0) return _findListNode(root, root->next, n - 1);
-    parent->next = root->next;
-    free(root->data);
-    free(root);
-    return 1;
-}
-*/
 
 pListNode excludeListNode(pListNode root, size_t n)
 {
     if (root == NULL) return root;
-    if (n > 0) root->next = excludeListNode(root->next, n - 1);
+    if (n > 0)
+    {
+        root->next = excludeListNode(root->next, n - 1);
+        return root;
+    }
     pListNode temp = root->next;
     root->data = NULL;
     root->next = NULL;
+    free(root); // to prevent memory leak
     root = NULL;
     return temp;
 }
 
-
-pListNode removeListNode(pListNode root, size_t n)
+pListNode removeListNodeByN(pListNode root, size_t n)
 {
     if (root == NULL) return root;
-    if (n > 0) root->next = removeListNode(root->next, n - 1);
+    if (n > 0)
+    {
+        root->next = removeListNodeByN(root->next, n - 1);
+        return root;
+    }
     pListNode temp = root->next;
     free(root->data);
     free(root);
-    root->data = NULL;
-    root->next = NULL;
+    root = NULL;
+    return temp;
+}
+
+pListNode removeListNodeByVal(pListNode root, void* value)
+{
+    if (root == NULL) return root;
+    if (root->data != value)
+    {
+        root->next = removeListNodeByVal(root->next, value);
+        return root;
+    }
+    pListNode temp = root->next;
+    free(root->data);
+    free(root);
     root = NULL;
     return temp;
 }
@@ -462,19 +590,13 @@ pListNode eraseList(pListNode root)
     if (root->next) root->next = eraseList(root->next);
     free(root->data);
     free(root);
-    root->data = NULL;
-    root->next = NULL;
     root = NULL;
     return root;
 }
 
 void printStrList(pListNode root)
 {
-    if (root == NULL)
-    {
-        //printf("\n");
-        return;
-    }
+    if (root == NULL)   return;
     printf("(%s) ", (char*)root->data);
     printStrList(root->next);
 }
