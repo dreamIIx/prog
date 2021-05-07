@@ -100,7 +100,7 @@ int main()
     pListNode tempFoundStr = findBTreeStrElem(btreeroot, "dlkfwe1pk");
     if (tempFoundStr) printf("\nfind1: %s\n", (char*)tempFoundStr->data);
 
-    btreeroot = removeBTreeElem(btreeroot, "13");
+    btreeroot = removeBTreeElem(btreeroot, "1");
     printf("remove:\n");
     printStrBTree(btreeroot);
     printf("\n");
