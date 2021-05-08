@@ -45,7 +45,7 @@ int sizeTree(pTreeNode);
 void printTree(pTreeNode);
 void printTreeLevel(FILE*, pTreeNode, int);
 pBTreeNode insertBTreeNode(pBTreeNode, void*, size_t);
-pBTreeNode removeBTreeElem(pBTreeNode, void*);
+pBTreeNode removeBTreeElem(pBTreeNode, void*, size_t);
 pListNode findBTreeStrElem(pBTreeNode, char*);
 pBTreeNode eraseBTree(pBTreeNode);
 void printStrBTree(pBTreeNode);
@@ -100,15 +100,10 @@ int main()
     pListNode tempFoundStr = findBTreeStrElem(btreeroot, "dlkfwe1pk");
     if (tempFoundStr) printf("\nfind1: %s\n", (char*)tempFoundStr->data);
 
-    btreeroot = removeBTreeElem(btreeroot, "6");
+    btreeroot = removeBTreeElem(btreeroot, "2", szSTR_BUF);
     printf("remove:\n");
     printStrBTree(btreeroot);
     printf("\n");
-    /*if (btreeroot && !btreeroot->size) btreeroot = (pBTreeNode)btreeroot->elem->data;
-    //btreeroot = removeBTreeElem(btreeroot, "10");
-    printf("remove:\n");
-    printStrBTree(btreeroot);
-    printf("\n");*/
     free(str);
     eraseTree(mainroot);
     printf("---------------------\n");
@@ -327,7 +322,7 @@ pBTreeNode insertBTreeNode(pBTreeNode root, void* str, size_t size)
     return root;
 }
 
-pBTreeNode removeBTreeElem(pBTreeNode root, void* str)
+pBTreeNode removeBTreeElem(pBTreeNode root, void* str, size_t size)
 {
     if (root == NULL) return root;
     pListNode curnode = NULL;
@@ -339,19 +334,27 @@ pBTreeNode removeBTreeElem(pBTreeNode root, void* str)
         {
             root->vals = removeListNodeByN(root->vals, i);
             --root->size;
-            return root;
+            break;
         }
         if (res > 0)  break;
         ++i;
     }
     if ((curnode = findListNode(root->elem, i)))
     {
+        if (!res)
+        {
+            pListNode temp = NULL;
+            temp = findListNode(((pBTreeNode)curnode->data)->vals, ((pBTreeNode)curnode->data)->size - 1);
+            root->vals = copyData2ListNodeTo(root->vals, i, temp->data, size);
+            ++root->size;
+            str = (char*)temp->data;
+        }
         if (((pBTreeNode)curnode->data)->size <= kBTREE - 1)
         {
             ptrdiff_t neighbour = 0ul;
             if (i > 0)  neighbour = i - 1;
             else        neighbour = i + 1;
-            if (((pBTreeNode)curnode->data)->size + ((pBTreeNode)findListNode(root->elem, neighbour)->data)->size > 2 * kBTREE - 1) // (... + 1 > ... - 1) |---> (.. > ... -2)
+            if (((pBTreeNode)curnode->data)->size + ((pBTreeNode)findListNode(root->elem, neighbour)->data)->size > 2 * kBTREE - 1)
             {
                 if (i == 0)  neighbour = i;
                 pListNode temp2 = findListNode(root->vals, neighbour);
@@ -365,9 +368,6 @@ pBTreeNode removeBTreeElem(pBTreeNode root, void* str)
                 pListNode curnodeTemp = findListNode(root->elem, neighbour);
                 if (((pBTreeNode)curnodeTemp->data)->elem)
                 {
-                printf("print:\n");
-                printStrBTree(root);
-                printf("\n");
                     if (i)  ((pBTreeNode)curnodeTemp->data)->elem = insertListNodeTo(((pBTreeNode)curnodeTemp->data)->elem, 0, findListNode(((pBTreeNode)curnodeTemp->data)->elem, ((pBTreeNode)curnodeTemp->data)->size));
                     else    ((pBTreeNode)curnodeTemp->data)->elem = insertListNodeTo(((pBTreeNode)curnodeTemp->data)->elem, ((pBTreeNode)curnodeTemp->data)->size, findListNode(((pBTreeNode)curnodeTemp->data)->elem, ((pBTreeNode)curnodeTemp->data)->size));
                     findListNode(((pBTreeNode)curnodeTemp->data)->elem, ((pBTreeNode)curnodeTemp->data)->size - 1)->next = NULL;
@@ -412,7 +412,7 @@ pBTreeNode removeBTreeElem(pBTreeNode root, void* str)
                 curnode = findListNode(root->elem, i ? i - 1 : 0);
             }
         }
-        curnode->data = removeBTreeElem((pBTreeNode)curnode->data, str);
+        curnode->data = removeBTreeElem((pBTreeNode)curnode->data, str ,szSTR_BUF);
         return root;
     }
     return root;
