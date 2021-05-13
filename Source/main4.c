@@ -36,7 +36,8 @@ typedef struct BTreeNode_
     pListNode    elem;
 } BTreeNode, *pBTreeNode;
 
-pTreeNode insertTreeNode(pTreeNode, char*);
+void __fscanf_str(FILE*, char**, size_t*);
+pTreeNode insertTreeNode(pTreeNode, char*, size_t);
 pTreeNode seekMostLeftAndRemove(pTreeNode);
 pTreeNode findTreeNode(pTreeNode, char*);
 pTreeNode removeTreeNode(pTreeNode, char*);
@@ -65,28 +66,33 @@ void printStrList(pListNode);
 int main()
 {
     FILE* filetag;
-    char* str = (char*) malloc(szSTR_BUF);
+    size_t szStr = szSTR_BUF;
+    char* str = (char*) malloc(szStr);
+    ER_IFN(str, return 1; )
     pTreeNode mainroot = NULL;
     pBTreeNode btreeroot = NULL;
 
     filetag = fopen("input.txt", "r");
-    fscanf(filetag, "%s", str);
-    fscanf(filetag, "%s", str);
+    __fscanf_str(filetag, &str, &szStr);
+    __fscanf_str(filetag, &str, &szStr);
     while(strncmp(str, "DELETE:", 7))
     {
         strtok(str, ".");
-        mainroot = insertTreeNode(mainroot, str);
-        btreeroot = insertBTreeNode(btreeroot, str, szSTR_BUF);
+        mainroot = insertTreeNode(mainroot, str, szStr);
+        btreeroot = insertBTreeNode(btreeroot, str, szStr);
         printStrBTree(btreeroot);
         printf("\n");
-        fscanf(filetag, "%s", str);
+        szStr = szSTR_BUF;
+        __fscanf_str(filetag, &str, &szStr);
     }
-    fscanf(filetag, "%s", str);
+    szStr = szSTR_BUF;
+    __fscanf_str(filetag, &str, &szStr);
     while(strncmp(str, "LEVEL:", 6))
     {
         strtok(str, ".");
         mainroot = removeTreeNode(mainroot, str);
-        fscanf(filetag, "%s", str);
+        szStr = szSTR_BUF;
+        __fscanf_str(filetag, &str, &szStr);
     }
     int k_level = -1;
     fscanf(filetag, "%d", &k_level);
@@ -100,7 +106,7 @@ int main()
     pListNode tempFoundStr = findBTreeStrElem(btreeroot, "dlkfwe1pk");
     if (tempFoundStr) printf("\nfind1: %s\n", (char*)tempFoundStr->data);
 
-    btreeroot = removeBTreeElem(btreeroot, "2", szSTR_BUF);
+    btreeroot = removeBTreeElem(btreeroot, (char*)"2", szSTR_BUF);
     printf("remove:\n");
     printStrBTree(btreeroot);
     printf("\n");
@@ -112,13 +118,37 @@ int main()
     return 0;
 }
 
-pTreeNode insertTreeNode(pTreeNode root, char* str)
+void __fscanf_str(FILE* file, char** buf, size_t* sz)
+{
+    ER_IFN(buf, return; )
+    ER_IFN(*buf, return; )
+    ER_IF(*sz <= 0, return; )
+    char c;
+    size_t i = 0ull;
+    c = (char) fgetc(file);
+    while(c && c != ' ' && c != '\n')
+    {
+        (*buf)[i++] = c;
+        if (i >= *sz)
+        {
+            *sz += szSTR_BUF;
+            char* tmp = (char*) realloc(*buf, *sz);
+            ER_IFN(tmp, *sz -= szSTR_BUF; return; )
+            *buf = tmp;
+            tmp = NULL;
+        }
+        c = (char) fgetc(file);
+    }
+    (*buf)[i] = 0;
+}
+
+pTreeNode insertTreeNode(pTreeNode root, char* str, size_t size)
 {
     if (root == NULL)
     {
         root = (pTreeNode) malloc(sizeof(TreeNode));
         ER_IFN(root, return NULL; )
-        root->value = (char*) malloc(szSTR_BUF);
+        root->value = (char*) malloc(size);
         strcpy(root->value, str);
         root->right = NULL;
         root->left = NULL;
@@ -126,12 +156,12 @@ pTreeNode insertTreeNode(pTreeNode root, char* str)
     }
     if (strcmp(root->value, str) > 0)
     {
-        root->left = insertTreeNode(root->left, str);
+        root->left = insertTreeNode(root->left, str, size);
         return root;
     }
     if (strcmp(root->value, str) < 0)
     {
-        root->right = insertTreeNode(root->right, str);
+        root->right = insertTreeNode(root->right, str, size);
         return root;
     }
     return root;
