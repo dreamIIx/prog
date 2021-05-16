@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <malloc.h>
+#include <assert.h>
 
 #ifndef ER_IF
 #define ER_IF(x, Exc)   if ( (x) ) { Exc }
@@ -171,7 +172,8 @@ pTreeNode seekMostLeftAndRemove(pTreeNode node)
 {
     if (node == NULL || node->left == NULL) return node;
     pTreeNode res = seekMostLeftAndRemove(node->left);
-    if (node->left == res)   node->left = res->right; // D:
+    assert(res);
+    if (node->left == res)   node->left = res->right;
     return res;
 }
 
@@ -351,6 +353,8 @@ pBTreeNode insertBTreeNode(pBTreeNode root, void* str, size_t size)
     ++root->size;
     return root;
 }
+
+
 
 pBTreeNode removeBTreeElem(pBTreeNode root, void* str, size_t size)
 {
