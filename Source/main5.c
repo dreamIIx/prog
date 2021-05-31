@@ -158,12 +158,10 @@ void searchDijkstra(int from, pListNode edges, size_t n, pPairEdge ares)
             cur = findListNode((pListNode)findListNode(edges, from)->data, i++);
         }
 
+        _swap(pares, pares + n - shift - 1);
         ++shift;
-        for (int j = (n - shift) / 2 - 1; j >= 0; --j)
-        {
-            heapify((pares + shift), (n - shift), j, &_lesser);
-        }
-        from = (*(pares + shift))->vertex;
+        heapify(pares, (n - shift), 0, &_lesser);
+        from = (*pares)->vertex;
     }
     free(pares);
 }
