@@ -107,10 +107,16 @@ int main()
     pListNode tempFoundStr = findBTreeStrElem(btreeroot, "dlkfwe1pk");
     if (tempFoundStr) printf("\nfind1: %s\n", (char*)tempFoundStr->data);
 
-    btreeroot = removeBTreeElem(btreeroot, (char*)"2", szSTR_BUF);
+    btreeroot = removeBTreeElem(btreeroot, (char*)"qwerty", szSTR_BUF);
     printf("remove:\n");
     printStrBTree(btreeroot);
     printf("\n");
+
+    btreeroot = removeBTreeElem(btreeroot, (char*)"hello", szSTR_BUF);
+    printf("remove:\n");
+    printStrBTree(btreeroot);
+    printf("\n");
+
     free(str);
     eraseTree(mainroot);
     printf("---------------------\n");
@@ -383,6 +389,8 @@ pBTreeNode removeBTreeElem(pBTreeNode root, void* str, size_t size)
             ++root->size;
             str = (char*)temp->data;
         }
+        printf("\n%zu\n", ((pBTreeNode)curnode->data)->size);
+        printStrBTree(root);
         if (((pBTreeNode)curnode->data)->size <= kBTREE - 1)
         {
             ptrdiff_t neighbour = 0ul;
@@ -446,7 +454,7 @@ pBTreeNode removeBTreeElem(pBTreeNode root, void* str, size_t size)
                 curnode = findListNode(root->elem, i ? i - 1 : 0);
             }
         }
-        curnode->data = removeBTreeElem((pBTreeNode)curnode->data, str ,szSTR_BUF);
+        curnode->data = removeBTreeElem((pBTreeNode)curnode->data, str, szSTR_BUF);
         return root;
     }
     return root;
