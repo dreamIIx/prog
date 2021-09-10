@@ -2,6 +2,7 @@
 #include <fstream>
 #include <string.h>
 #include <vector>
+#include <cmath>
 
 #if !defined(defDX_S)
 #define defDX_S(x)		#x
@@ -73,26 +74,39 @@ public:
         {
             for(size_t j {0}; j < size + 1; ++j)
             {
-                /*::fc::Fraction::numerator read_num;
-                ::fc::Fraction::denominator read_den;
-                read >> read_num;
-                read >> read_den;*/
                 ::std::string read_symbs;
                 read >> read_symbs;
-                mtx[i].emplace_back(static_cast<::fc::Fraction::numerator>(::std::atoi(read_symbs.substr(0, read_symbs.find('/')).c_str())),
-                    static_cast<::fc::Fraction::denominator>(::std::atoi(read_symbs.substr(read_symbs.find('/') + 1).c_str())));
+                if (read_symbs.find('/') != ::std::string::npos) 
+                {
+                    size_t slashpos = read_symbs.find('/');
+                    mtx[i].emplace_back(static_cast<::fc::Fraction::numerator>(::std::atoll(read_symbs.substr(0, slashpos).c_str())),
+                        static_cast<::fc::Fraction::denominator>(::std::atoll(read_symbs.substr(slashpos + 1).c_str())));
+                }
+                else if (read_symbs.find('.') != ::std::string::npos)
+                {
+                    size_t dotpos = read_symbs.find('.');
+                    double mult = ::std::pow(10, read_symbs.size() - dotpos - 1);
+                    signed long long temp_num = ::std::atoll(read_symbs.substr(0, dotpos).c_str()) * mult;
+                    mtx[i].emplace_back(static_cast<::fc::Fraction::numerator>(temp_num + ::std::atoll(read_symbs.substr(dotpos + 1).c_str())),
+                        static_cast<::fc::Fraction::denominator>(mult));
+                }
+                else
+                {
+                    mtx[i].emplace_back(static_cast<::fc::Fraction::numerator>(::std::atoll(read_symbs.c_str())),
+                        static_cast<::fc::Fraction::denominator>(1ll));
+                }
             }
         }
     }
 
-    void Gauss()
+    bool Gauss()
     {
         size_t idx_swapedline = 1ull;
         for(size_t i {1}; i < size; ++i)
         {
             if (mtx[i - 1][i - 1].num == 0)
             {
-                ER_IF(idx_swapedline >= size, ::std::cout << "Null on diagonal!" << ::std::endl;, return; )
+                ER_IF(idx_swapedline >= size, ::std::cout << "Null on diagonal!" << ::std::endl;, return false; )
                 ::std::swap(mtx[idx_swapedline++], mtx[i - 1]);
                 --i;
                 continue;
@@ -114,10 +128,6 @@ public:
         mtx[size - 1][size] /= mtx[size - 1][size - 1];
         mtx[size - 1][size - 1] = ::fc::Fraction(1, 1);
 
-        printMtx();
-
-        //ER_IF(isNullOnDiag(), ::std::cout << "There are an null element on diagonal" << ::std::endl;, return; )
-
         for(size_t i {0}; i < size; ++i)
         {
             for(size_t j {i + 1}; j < size + 1; ++j)
@@ -128,21 +138,17 @@ public:
             mtx[i][i].den = 1;
         }
 
-        printMtx();
-
         for(ptrdiff_t i = static_cast<ptrdiff_t>(size - 1); i >= 0; --i)
         {
             ::fc::Fraction temp_res(0ll, 1ll);
             for(ptrdiff_t j {i + 1}; j < size; ++j)
             {
-                //::std::cout << mtx[i][j].num << '/' << mtx[i][j].den << " * " << res[i + 1].num << '/' << res[i + 1].den << ::std::endl;
                 temp_res += mtx[i][j] * res[j];
             }
-            //::std::cout << "ALL " << i << " = " << mtx[i][size].num << '/' << mtx[i][size].den << " - " << temp_res.num << '/' << temp_res.den <<::std::endl;
             if (res[i].num == 0)    res[i] = mtx[i][size] - temp_res;
-            else ER_IF(res[i] != mtx[i][size] - temp_res, ::std::cout << "Inconsistent system of linear equations, since result of X[" << i << ']' << ::std::endl;, return; )
-            //::std::cout << "RES " << i << " = " << res[i] << ::std::endl;
+            else ER_IF(res[i] != mtx[i][size] - temp_res, ::std::cout << "Inconsistent system of linear equations, since result of X[" << i << ']' << ::std::endl;, return false; )
         }
+        return true;
     }
 
     bool isNullOnDiag()
@@ -196,12 +202,16 @@ int main(int argc, char** argv)
     else            filename = argv[1];
 
     Matrix main_mtx(filename.c_str());
+    ::std::cout << "Matrix:" << ::std::endl;
+    main_mtx.printMtx();
 
-    //main_mtx.printMtx();
-    main_mtx.Gauss();
-    main_mtx.printRes();
-    main_mtx.printResDouble();
-    //main_mtx.printMtx();
+    ER_IFN(main_mtx.Gauss(), ::std::cout << "An error has occured!" << ::std::endl;, )
+    else
+    {
+        ::std::cout << "Results:" << ::std::endl;
+        main_mtx.printRes();
+        main_mtx.printResDouble();
+    }
 
     return 0;
 }
