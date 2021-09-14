@@ -252,13 +252,13 @@ public:
         ER_IFN(completed, ::std::cout << "Matrix is incompleted!" << ::std::endl;, return false; )
         for(size_t i {0}; i < size; ++i)
         {
-            for(size_t j {i + 1}; j < size + 1; ++j)
+            for(size_t j {0}; j < size + 1; ++j)
             {
-                mtx[i][j] /= mtx[i][i];
+                if (i != j) mtx[i][j] /= mtx[i][i];
                 if (j != size) inv_mtx[i][j] /= mtx[i][i];
             }
-            mtx[i][i].num = 1;
-            mtx[i][i].den = 1;
+            mtx[i][i].num = 1ll;
+            mtx[i][i].den = 1ull;
         }
 
         for(ptrdiff_t i = static_cast<ptrdiff_t>(size - 1); i >= 0; --i)
@@ -382,17 +382,17 @@ int main(int argc, char** argv)
     main_mtx.printMtx();
 
     auto res_det = main_mtx.det();
-    ::std::cout << "Determinant: " << res_det << " [" << res_det.num << '/' << res_det.den << ']' << ::std::endl;
+    ::std::cout << "\nDeterminant: " << res_det << " [" << res_det.num << '/' << res_det.den << ']' << ::std::endl;
     ER_IFN(main_mtx.GaussForward(), ::std::cout << "An error has occured!" << ::std::endl;, return 1; )
     ER_IFN(main_mtx.GaussForwardReverse(), ::std::cout << "An error has occured!" << ::std::endl;, return 1; )
     ER_IFN(main_mtx.GaussBackward(), ::std::cout << "An error has occured!" << ::std::endl;, return 1; )
     else
     {
-        ::std::cout << "Matrix:" << ::std::endl;
+        ::std::cout << "\nMatrix:" << ::std::endl;
         main_mtx.printMtx();
-        ::std::cout << "Inverse matrix:" << ::std::endl;
+        ::std::cout << "\nInverse matrix:" << ::std::endl;
         main_mtx.printInvMtx();
-        ::std::cout << "Results:" << ::std::endl;
+        ::std::cout << "\nResults:" << ::std::endl;
         main_mtx.printRes();
         main_mtx.printResDouble();
     }
