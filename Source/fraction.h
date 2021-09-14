@@ -5,7 +5,7 @@
 #include <cmath>
 #include <vector>
 #include <utility>
-
+#include <string.h>
 
 #if !defined(defDX_S)
 #define defDX_S(x)		#x
@@ -67,22 +67,24 @@ class Fraction
 {
 public:
     using numerator = signed long long;
-    using denominator = signed long long;
+    using denominator = unsigned long long;
     //using numerator_type = ::std::vector<numerator>;
     //using denominator_type = ::std::vector<denominator>;
 
     numerator num;
     denominator den;
 
-    //Fraction();
+    Fraction();
     explicit Fraction(numerator numerator, denominator denominator);
     Fraction(const Fraction& instance);
+    Fraction(::std::string&) noexcept(false);
     //Fraction(Fraction&& instance) noexcept(true);
     ~Fraction();
     
     //Fraction& operator=(Fraction instance) noexcept(true);
     Fraction& operator=(Fraction&& instance) noexcept(true);
     Fraction& operator=(const Fraction& instance) noexcept(true);
+    Fraction& operator=(::std::string&) noexcept(false);
     operator double();
     Fraction operator+(const Fraction& instance);
     Fraction& operator+=(const Fraction& instance);
@@ -93,7 +95,8 @@ public:
     Fraction operator/(const Fraction& instance);
     Fraction& operator/=(const Fraction& instance);
 
-    static Fraction reverse(const Fraction instance);
+    static Fraction reverse(const Fraction& instance);
+    Fraction& reverse();
     static void reduction(Fraction& instance);
 };
 
