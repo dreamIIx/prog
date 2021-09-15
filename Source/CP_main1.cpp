@@ -1,5 +1,6 @@
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <string.h>
 #include <vector>
 #include <cmath>
@@ -54,13 +55,17 @@
 
 #include "fraction.h"
 
+template<typename T>
+::std::string nts(T);
+
 class Matrix
 {
 public:
     bool completed;
     size_t size; // is N
+    ::std::vector<::std::vector<::fc::Fraction>> start_mtx; // N x (N + 1)
     ::std::vector<::std::vector<::fc::Fraction>> mtx; // N x (N + 1)
-    ::std::vector<::std::vector<::fc::Fraction>> inv_mtx; // N x (N + 1)
+    ::std::vector<::std::vector<::fc::Fraction>> inv_mtx; // N x N
     ::std::vector<::fc::Fraction> res; // N
 
     Matrix() noexcept(true) : completed(false), size(0u) {}
@@ -94,6 +99,7 @@ public:
                 else inv_mtx[i].emplace_back();
             }
         }
+        start_mtx = mtx;
         completed = true;
     }
 
@@ -116,8 +122,10 @@ public:
         {
             for(size_t j {0}; j < size; ++j)
             {
-                mtx[i].emplace_back(i + j, 1ull);
-                if (i == j) inv_mtx[i].emplace_back(1ull, 1ull);
+                double temp_exp = exp(-0.1 * ::std::llabs(i - j));
+                auto temp_str = nts(temp_exp);
+                mtx[i].emplace_back(temp_str);
+                if (i == j) inv_mtx[i].emplace_back(1ll, 1ull);
                 else inv_mtx[i].emplace_back();
             }
         }
@@ -125,7 +133,33 @@ public:
         {
             mtx[i].emplace_back(i, 1ull);
         }
+        start_mtx = mtx;
         completed = true;
+    }
+
+    static ::std::vector<::std::vector<::fc::Fraction>> MultMtxOnMtx(::std::vector<::std::vector<::fc::Fraction>>& w, ::std::vector<::std::vector<::fc::Fraction>>& v) noexcept(false)
+    {
+        ER_IF(w.size() != v.size(), ::std::cout << "Ill-formed vector!" << ::std::endl;, return ::std::vector<::std::vector<::fc::Fraction>>(); )
+        ::std::vector<::std::vector<::fc::Fraction>> func_result;
+        func_result.reserve(w.size());
+        for(size_t i {0}; i < w.size(); ++i)
+        {
+            func_result.emplace_back(::std::vector<::fc::Fraction>());
+            func_result.back().reserve(v[0].size());
+        }
+        for(size_t k {0}; k < v[0].size(); ++k)
+        {
+            for(size_t i {0}; i < w.size(); ++i)
+            {
+                ::fc::Fraction temp_res_;
+                for(size_t j {0}; j < w.size(); ++j)
+                {
+                    temp_res_ += w[i][j] * v[j][k];
+                }
+                func_result[i].emplace_back(temp_res_);
+            }
+        }
+        return func_result;
     }
 
     bool GaussForward() noexcept(false)
@@ -136,7 +170,7 @@ public:
         {
             if (mtx[i - 1][i - 1].num == 0)
             {
-                ER_IF(idx_swapedline >= size, ::std::cout << "Null on diagonal!" << ::std::endl;, return false; )
+                if (idx_swapedline >= size) idx_swapedline = i;
                 ::std::swap(mtx[idx_swapedline], mtx[i - 1]);
                 ::std::swap(inv_mtx[idx_swapedline++], inv_mtx[i - 1]);
                 --i;
@@ -174,7 +208,7 @@ public:
         {
             if (mtx[i + 1][i + 1].num == 0)
             {
-                ER_IF(idx_swapedline < 0, ::std::cout << "Null on diagonal!" << ::std::endl;, return false; )
+                if (idx_swapedline >= size) idx_swapedline = i;
                 ::std::swap(mtx[idx_swapedline], mtx[i + 1]);
                 ::std::swap(inv_mtx[idx_swapedline--], inv_mtx[i + 1]);
                 ++i;
@@ -217,7 +251,7 @@ public:
             }
             if (mtx[i - 1][i - 1].num == 0)
             {
-                ER_IF(idx_swapedline >= size, ::std::cout << "Null on diagonal!" << ::std::endl;, return false; )
+                if (idx_swapedline >= size) idx_swapedline = i;
                 ::std::swap(mtx[idx_swapedline], mtx[i - 1]);
                 ::std::swap(inv_mtx[idx_swapedline++], inv_mtx[i - 1]);
                 --i;
@@ -378,8 +412,38 @@ int main(int argc, char** argv)
     else            filename = argv[1];
 
     Matrix main_mtx(filename.c_str());
+    //Matrix main_mtx;
+    //main_mtx.__spec_input_mtx();
     ::std::cout << "Input matrix:" << ::std::endl;
     main_mtx.printMtx();
+
+    /*::std::vector<::std::vector<::fc::Fraction>> vector_x;
+    vector_x.reserve(3ull);
+    for(size_t i {0}; i < 3ull; ++i)
+    {
+        vector_x.emplace_back(::std::vector<::fc::Fraction>());
+    }
+    vector_x[0].emplace_back(1ll, 1ull);
+    for(size_t i {1}; i < 3; ++i)
+    {
+        vector_x[i].emplace_back();
+    }
+    auto res_b = main_mtx.MultMtxOnVector(vector_x);
+    ::std::cout << "\nResult B:" << ::std::endl;
+    for(size_t i {0}; i < res_b.size(); ++i)
+    {
+        for(size_t j {0}; j < res_b.back().size(); ++j)
+        {
+            ::std::cout << res_b[i][j].num << '/' << res_b[i][j].den << ' ';
+        }
+        ::std::cout << ::std::endl;
+    }
+    for(size_t i {0}; i < main_mtx.size; ++i)
+    {
+        main_mtx.mtx[i][main_mtx.size] = res_b[i][0];
+    }
+    ::std::cout << "2 matrix:" << ::std::endl;
+    main_mtx.printMtx();*/
 
     auto res_det = main_mtx.det();
     ::std::cout << "\nDeterminant: " << res_det << " [" << res_det.num << '/' << res_det.den << ']' << ::std::endl;
@@ -396,6 +460,30 @@ int main(int argc, char** argv)
         main_mtx.printRes();
         main_mtx.printResDouble();
     }
+    
+    main_mtx.mtx = main_mtx.start_mtx;
+    auto res_b2 = Matrix::MultMtxOnMtx(main_mtx.mtx, main_mtx.inv_mtx);
+    ::std::cout << "\nResult A*A-1:" << ::std::endl;
+    for(size_t i {0}; i < res_b2.size(); ++i)
+    {
+        for(size_t j {0}; j < res_b2.back().size(); ++j)
+        {
+            ::std::cout << res_b2[i][j].num << '/' << res_b2[i][j].den << ' ';
+        }
+        ::std::cout << ::std::endl;
+    }
 
     return 0;
+}
+
+template<typename T>
+::std::string nts(T arg)
+{
+	::std::stringstream ss(::std::stringstream::in | ::std::stringstream::out);
+
+	ss << arg;
+
+	::std::string s = ss.str();
+
+	return s;
 }
