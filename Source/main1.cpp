@@ -196,30 +196,49 @@ public:
         return str[n];
     }
 
+    dxString<T> operator-(T arg)
+    {
+        const char *temp = &arg;
+        return operator-(temp);
+    }
+
     dxString<T> operator-(const T* arg)
     {
         size_t arg_size = ::std::strlen(arg);
-        T* temp = new T[size + 1];
-        size_t cur = 0ull;
-        for(size_t i {0}; i < size; ++i)
+        dxString<T> res;
+        res.size = size;
+        res.str = new T[res.size + 1];
+        const char* cur = str;
+        const char* prev = str;
+        size_t real_size = 0ull;
+        while((cur = ::std::strstr(cur, arg)) != nullptr)
         {
-            bool seek = true;
-            size_t delt = 0ull;
-            for(size_t j {0}; j < arg_size; ++j)
-            {
-                if (str[i] != arg[j])
-                {
-                    seek = false;
-                }
-                delt = j + 1;
-            }
-            if (seek) continue;
-            ::std::strncpy(temp + cur, str + i, delt);
-            cur += delt;
-            i += delt - 1;
+            ::std::strncpy(res.str + real_size, prev, cur - prev);
+            real_size = cur - prev;
+            cur += arg_size;
+            prev = cur;
         }
-        dxString<T> res(temp);
-        delete[] temp;
+        ::std::strcpy(res.str + real_size, prev);
+        return res;
+    }
+
+    dxString<T> operator-(const dxString<T>& arg)
+    {
+        size_t arg_size = ::std::strlen(arg.str);
+        dxString<T> res;
+        res.size = size;
+        res.str = new T[res.size + 1];
+        const char* cur = str;
+        const char* prev = str;
+        size_t real_size = 0ull;
+        while((cur = ::std::strstr(cur, arg.str)) != nullptr)
+        {
+            ::std::strncpy(res.str + real_size, prev, cur - prev);
+            real_size = cur - prev;
+            cur += arg_size;
+            prev = cur;
+        }
+        ::std::strcpy(res.str + real_size, prev);
         return res;
     }
 
@@ -251,7 +270,7 @@ int main()
     ER_IFN(read.is_open(),, return 1; )
     read >> main_str;
     ::std::cout << main_str << ::std::endl;
-    ::std::cout << ((main_str + "hello!)") - "Hel") << ::std::endl;
+    ::std::cout << ((main_str + "hello!)") - dxString("Hel")) - '!' << ::std::endl;
     read >> str_to_delete;
     read >> str_to_replace;
     
