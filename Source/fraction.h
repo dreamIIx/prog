@@ -78,12 +78,11 @@ public:
     explicit Fraction(numerator numerator, denominator denominator);
     Fraction(const Fraction& instance);
     Fraction(::std::string&) noexcept(false);
-    //Fraction(Fraction&& instance) noexcept(true);
+    Fraction(Fraction&& instance) noexcept(true);
     ~Fraction();
     
-    //Fraction& operator=(Fraction instance) noexcept(true);
-    Fraction& operator=(Fraction&& instance) noexcept(true);
     Fraction& operator=(const Fraction& instance) noexcept(true);
+    Fraction& operator=(Fraction&& instance) noexcept(true);
     Fraction& operator=(::std::string&) noexcept(false);
     operator double();
     Fraction operator+(const Fraction& instance);
