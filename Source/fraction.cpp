@@ -69,7 +69,7 @@ Fraction::Fraction(::std::string& str) noexcept(false)
     Fraction::reduction(*this);
 }
 
-/*Fraction::Fraction(Fraction&& instance) noexcept(true)
+Fraction::Fraction(Fraction&& instance) noexcept(true)
 {
     ER_IF(instance.den == 0ull, ::std::cout << "denominator is 0" << ::std::endl;, )
     else
@@ -77,31 +77,24 @@ Fraction::Fraction(::std::string& str) noexcept(false)
         num = ::std::move(instance.num);
         den = ::std::move(instance.den);
     }
-}*/
+}
 
 Fraction::~Fraction()
 {
 
 }
 
-/*Fraction& Fraction::operator=(Fraction _frac) noexcept(true)
+Fraction& Fraction::operator=(const Fraction& _frac) noexcept(true)
 {
     num = _frac.num;
     den = _frac.den;
     return *this;
-}*/
+}
 
 Fraction& Fraction::operator=(Fraction&& _frac) noexcept(true)
 {
     num = ::std::forward<decltype(num)>(_frac.num);
     den = ::std::forward<decltype(den)>(_frac.den);
-    return *this;
-}
-
-Fraction& Fraction::operator=(const Fraction& _frac) noexcept(true)
-{
-    num = _frac.num;
-    den = _frac.den;
     return *this;
 }
 
@@ -211,7 +204,7 @@ Fraction& Fraction::operator/=(const Fraction& instance)
 
 Fraction Fraction::reverse(const Fraction& instance)
 {
-    auto res = instance;
+    Fraction res = instance;
     bool flag = false;
     if (res.num < 0)
     {
