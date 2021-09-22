@@ -30,10 +30,10 @@
 								::std::cout << "![EXCPT]" << (const char*)defDX__FILELINE << ::std::endl;	\
 							}
 #else
-#error This UNIX operating system is not supported by dx::NN
+#error This UNIX operating system is not supported
 #endif
 #else
-#error This operating system is not supported by dx::NN
+#error This operating system is not supported
 #endif
 
 #endif
