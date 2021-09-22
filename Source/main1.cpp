@@ -94,12 +94,13 @@ public:
     operator>>(R& _stream, dxString<T>& instance) noexcept(false)
     {
         if (instance.size) delete[] instance.str;
-        //t_std_string sstr;
-        ::std::getline(_stream, instance.str, (T)'\n');
-        instance.size = sstr.size();
+        size_t maxszbuf = 4096;                         // temporary size
+        T* temp = new T[maxszbuf + 1];
+        _stream.getline(temp, ::std::numeric_limits<::std::streamsize>::max(), (T)'\n');
+        instance.size = ::std::strlen(temp);
         instance.str = new T[instance.size + 1];
-        //instance.str = ::std::strcpy(instance.str, sstr.c_str());
-        instance.str = static_cast<decltype(instance.str)>(::std::memcpy(instance.str, sstr.c_str(), sstr.size()));
+        instance.str = ::std::strcpy(instance.str, temp);
+        delete[] temp;
         return _stream;
     }
 
@@ -305,7 +306,10 @@ int main()
     temp = temp - (temp - "lo,");
     ::std::cout << temp << ::std::endl;
     read >> str_to_delete;
+    ::std::cout << str_to_delete << ::std::endl;
     read >> str_to_replace;
+    ::std::cout << str_to_replace * 6 << ::std::endl;
+    ::std::cout << str_to_replace << ::std::endl;
     
     return 0;
 }
