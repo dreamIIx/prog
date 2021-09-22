@@ -5,6 +5,7 @@
 #include <vector>
 #include <cmath>
 
+#ifndef _DX_BITS_OPERS
 #define ISBIT(x,pos)        ( ( (x) & ( 0x1 << (pos) ) ) != 0 )
 #define GETBIT(x,pos)       ( (x) & ( 0x1 << (pos) ) )
 #define GETBITS(x,y,pos)	( (x) & ( y << (pos) ) )
@@ -12,6 +13,7 @@
 #define UNSETBIT(x,pos)     ( (x) &= (~( 0x1 << (pos) ) ) )
 #define SETBITS(x,y,pos)	( (x) |= ( y << (pos) ) )
 #define UNSETBITS(x,y,pos)	( (x) &= (~( y << (pos) ) ) )
+#endif
 
 #if !defined(defDX_S)
 #define defDX_S(x)		#x
@@ -65,6 +67,7 @@ public:
     size_t size; // is N
     ::std::vector<::std::vector<::fc::Fraction>> start_mtx; // N x (N + 1)
     ::std::vector<::std::vector<::fc::Fraction>> mtx; // N x (N + 1)
+    ::std::vector<::std::vector<double>> mtx_double; // N x (N + 1)
     ::std::vector<::std::vector<::fc::Fraction>> inv_mtx; // N x N
     ::std::vector<::fc::Fraction> res; // N
 
@@ -78,6 +81,7 @@ public:
         read >> size;
         mtx.reserve(size);
         inv_mtx.reserve(size);
+        mtx_double.reserve(size);
         res.reserve(size);
         for(size_t i {0}; i < size; ++i)
         {
@@ -85,6 +89,8 @@ public:
             mtx.back().reserve(size + 1);
             inv_mtx.emplace_back(::std::vector<::fc::Fraction>());
             inv_mtx.back().reserve(size);
+            mtx_double.emplace_back(::std::vector<double>());
+            mtx_double.back().reserve(size);
             res.emplace_back(0ll, 1ll);
         }
 
@@ -95,6 +101,7 @@ public:
                 ::std::string read_symbs;
                 read >> read_symbs;
                 mtx[i].emplace_back(read_symbs);
+                if (j < size)   mtx_double[i][j] = 0.;
                 if ((i == j) && j != size) inv_mtx[i].emplace_back(1ull, 1ull);
                 else inv_mtx[i].emplace_back();
             }
@@ -108,6 +115,7 @@ public:
         size = 3ull;
         mtx.reserve(size);
         inv_mtx.reserve(size);
+        mtx_double.reserve(size);
         res.reserve(size);
         for(size_t i {0}; i < size; ++i)
         {
@@ -115,6 +123,8 @@ public:
             mtx.back().reserve(size + 1);
             inv_mtx.emplace_back(::std::vector<::fc::Fraction>());
             inv_mtx.back().reserve(size);
+            mtx_double.emplace_back(::std::vector<double>());
+            mtx_double.back().reserve(size);
             res.emplace_back(0ll, 1ll);
         }
 
@@ -125,6 +135,7 @@ public:
                 double temp_exp = exp(-0.1 * ::std::llabs(i - j));
                 auto temp_str = nts(temp_exp);
                 mtx[i].emplace_back(temp_str);
+                if (j < size)   mtx_double[i][j] = 0.;
                 if (i == j) inv_mtx[i].emplace_back(1ll, 1ull);
                 else inv_mtx[i].emplace_back();
             }
@@ -340,6 +351,44 @@ public:
         return temp_res;
     }
 
+    void CholezkyMetod()
+    {
+        mtx_double[0][0] = ::std::sqrt(start_mtx[0][0]);
+        for(size_t i = {0}; i < size; ++i)
+        {
+            mtx_double[i][0] = start_mtx[i][0] / mtx_double[0][0];
+        }
+        for(size_t i {1}; i < size; ++i)
+        {
+            double temp = start_mtx[i][i];
+            for(size_t j {0}; j < i; ++j)
+            {
+                temp -= ::std::pow(mtx_double[i][j], 2);
+            }
+            mtx_double[i][i] = ::std::sqrt(temp);
+            for(size_t j {0}; j < size; ++j)
+            {
+                temp = start_mtx[j][i];
+                for(size_t k {0}; k < i; ++k)
+                {
+                    temp -= mtx_double[i][k] * mtx_double[j][k];
+                }
+                mtx_double[j][i] = temp / mtx_double[i][i];
+            }
+        }
+    }
+
+    void T()
+    {
+        for(size_t i {0}; i < size; ++i)
+        {
+            for(size_t j {i + 1}; j < size; ++j)
+            {
+                ::std::swap(mtx_double[i][j], mtx_double[j][i]);
+            }
+        }
+    }
+
     // true = 1
     // false = 0
     // error = -1
@@ -376,6 +425,19 @@ public:
             {
                 ::std::cout << inv_mtx[i][j].num << '/';
                 ::std::cout << inv_mtx[i][j].den << ' ';
+            }
+            ::std::cout << ::std::endl;
+        }
+    }
+
+    void printDoubleMtx() noexcept(false)
+    {
+        ER_IFN(completed, ::std::cout << "Matrix is incompleted!" << ::std::endl;, return; )
+        for(size_t i = 0ull; i < size; ++i)
+        {
+            for(size_t j = 0ull; j < size; ++j)
+            {
+                ::std::cout << mtx_double[i][j] << '/';
             }
             ::std::cout << ::std::endl;
         }
@@ -472,6 +534,13 @@ int main(int argc, char** argv)
         }
         ::std::cout << ::std::endl;
     }
+
+    main_mtx.CholezkyMetod();
+    ::std::cout << "--------" << ::std::endl;
+    main_mtx.printDoubleMtx();
+    ::std::cout << "--------" << ::std::endl;
+    main_mtx.T();
+    main_mtx.printDoubleMtx();
 
     return 0;
 }
