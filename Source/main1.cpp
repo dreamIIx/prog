@@ -94,8 +94,8 @@ public:
     operator>>(R& _stream, dxString<T>& instance) noexcept(false)
     {
         if (instance.size) delete[] instance.str;
-        t_std_string sstr;
-        ::std::getline(_stream, sstr, (T)'\n');
+        //t_std_string sstr;
+        ::std::getline(_stream, instance.str, (T)'\n');
         instance.size = sstr.size();
         instance.str = new T[instance.size + 1];
         //instance.str = ::std::strcpy(instance.str, sstr.c_str());
@@ -109,6 +109,7 @@ public:
         size = dxstr.size;
         str = new T[dxstr.size + 1];
         str = ::std::strcpy(str, dxstr.str);
+        return *this;
     }
 
     dxString<T>& operator=(dxString<T>&& dxstr) noexcept(false)
@@ -117,6 +118,7 @@ public:
         size = ::std::move(dxstr.size);
         str = new T[dxstr.size + 1];
         str = ::std::strcpy(str, dxstr.str);
+        return *this;
     }
 
     dxString<T> operator+(const T* arg) const noexcept(false)
@@ -185,6 +187,12 @@ public:
         return temp;
     }
 
+    dxString<T>& operator*=(size_t n) const noexcept(false)
+    {
+        *this = this->operator*(n);
+        return *this;
+    }
+
     operator const T*() const noexcept(false)
     {
         return const_cast<const T*>(str);
@@ -196,13 +204,20 @@ public:
         return str[n];
     }
 
-    dxString<T> operator-(T arg)
+    dxString<T> operator-(T arg) const noexcept(false)
     {
         const char *temp = &arg;
         return operator-(temp);
     }
 
-    dxString<T> operator-(const T* arg)
+    dxString<T>& operator-=(T arg) noexcept(false)
+    {
+        const char *temp = &arg;
+        *this = this->operator-(temp);
+        return *this;
+    }
+
+    dxString<T> operator-(const T* arg) const noexcept(false)
     {
         size_t arg_size = ::std::strlen(arg);
         dxString<T> res;
@@ -214,7 +229,8 @@ public:
         while((cur = ::std::strstr(cur, arg)) != nullptr)
         {
             ::std::strncpy(res.str + real_size, prev, cur - prev);
-            real_size = cur - prev;
+            real_size += cur - prev;
+            res.str[real_size] = 0;
             cur += arg_size;
             prev = cur;
         }
@@ -222,7 +238,13 @@ public:
         return res;
     }
 
-    dxString<T> operator-(const dxString<T>& arg)
+    dxString<T>& operator-=(const T* arg) noexcept(false)
+    {
+        *this = this->operator-(arg);
+        return *this;
+    }
+
+    dxString<T> operator-(const dxString<T>& arg) const noexcept(false)
     {
         size_t arg_size = ::std::strlen(arg.str);
         dxString<T> res;
@@ -242,12 +264,18 @@ public:
         return res;
     }
 
+    dxString<T>& operator-=(const dxString<T>& arg) noexcept(false)
+    {
+        *this = this->operator-(arg);
+        return *this;
+    }
+
     size_t getSize() const noexcept(true)
     {
         return size;
     }
 
-    bool insert(const char* arg, size_t pos)
+    bool insert(const char* arg, size_t pos) noexcept(false)
     {
         ER_IF(arg == nullptr, ::std::cerr << "arg is nullptr (insert)" << ::std::endl;, return false; )
         dxString<T> temp;
@@ -270,7 +298,12 @@ int main()
     ER_IFN(read.is_open(),, return 1; )
     read >> main_str;
     ::std::cout << main_str << ::std::endl;
-    ::std::cout << ((main_str + "hello!)") - dxString("Hel")) - '!' << ::std::endl;
+    dxString temp = ((main_str + "hello!)") - dxString("Hel"));
+    ::std::cout << temp << ::std::endl;
+    temp -= "!";
+    ::std::cout << temp << ::std::endl;
+    temp = temp - (temp - "lo,");
+    ::std::cout << temp << ::std::endl;
     read >> str_to_delete;
     read >> str_to_replace;
     
