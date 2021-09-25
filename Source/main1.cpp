@@ -45,6 +45,7 @@
 #endif
 
 #define _dxBUF_SIZE_INPUT_STREAM 4096
+#define _dxREALLOC_MEM_WAY(x) ((x) = (x) * 2)
 
 template<typename T>
 const T* find_substr(const T* src, const T* substr);
@@ -54,56 +55,74 @@ class dxString
 {
 private:
     size_t size;
+    size_t capacity;
     T* str;
 
 public:
-    dxString() noexcept(true) : size(0ull), str(nullptr) {}
+    dxString() noexcept(true) : size(0ull), capacity(0ull), str(nullptr) {}
 
-    dxString(const dxString<T>& dxstr) noexcept(false) : size(dxstr.size), str(nullptr)
-    {
-        str = new T[dxstr.size + 1];
-        str = ::std::char_traits<T>::copy(str, dxstr.str, ::std::char_traits<T>::length(dxstr.str) + 1);
-    }
-
-    dxString(dxString<T>&& dxstr) noexcept(false) : size(::std::move(dxstr.size)), str(nullptr)
-    {
-        str = new T[dxstr.size + 1];
-        str = ::std::char_traits<T>::move(str, dxstr.str, ::std::char_traits<T>::length(dxstr.str) + 1);
-    }
-
-    dxString(T astr) noexcept(false) : size(1ull), str(nullptr)
-    {
-        str = new T[2];
-        str[0] = astr;
-        str[1] = 0;
-    }
-
-    explicit dxString(const T* astr) noexcept(false) : size(::std::char_traits<T>::length(astr)), str(nullptr)
+    dxString(const T* astr) noexcept(false)
     {
         ER_IF(astr == nullptr, ::std::cerr << "arg is nullptr (constructor(const T*))" << ::std::endl;, )
-    
-        str = new T[size + 1];
-        str = ::std::char_traits<T>::copy(str, astr, ::std::char_traits<T>::length(astr) + 1);
+        size = ::std::char_traits<T>::length(astr);
+        capacity = size + 1;
+        str = new T[capacity];
+        str = ::std::char_traits<T>::copy(str, astr, capacity);
+    }
+
+    dxString(const dxString<T>& dxstr) noexcept(false) : size(dxstr.size), capacity(dxstr.capacity)
+    {
+        str = new T[capacity];
+        str = ::std::char_traits<T>::copy(str, dxstr.str, size + 1);
+    }
+
+    dxString(dxString<T>&& dxstr) noexcept(false) : size(::std::move(dxstr.size)), capacity(::std::move(dxstr.capacity))
+    {
+        str = new T[capacity];
+        str = ::std::char_traits<T>::copy(str, dxstr.str, size + 1);
+        dxstr.str = nullptr;
+    }
+
+    [[deprecated]]
+    dxString(T astr) noexcept(false) : size(1ull), capacity(2ull)
+    {
+        str = new T[2ull];
+        str[0] = astr;
+        str[1] = 0;
     }
 
     ~dxString() noexcept(false)
     {
         delete[] str;
+        size = 0ull;
+        capacity = 0ull;
     }
 
+    void __reallocate_mem(size_t add_cpcty = 0ull) noexcept(false)
+    {
+        if (!add_cpcty)     _dxREALLOC_MEM_WAY(capacity);
+        else                capacity += add_cpcty;
+        T* tempstr = new T[capacity];
+        if (size)   ::std::char_traits<T>::copy(tempstr, str, size + 1);               // +1 for '\0'
+        delete[] str;                                                               // well defined by standart for nullptr
+        str = tempstr;
+    }
+
+    // reads and appends following 'line' from file (until '\n' is encountered)
     template<typename R>
     friend ::std::enable_if_t<::std::disjunction_v<
         ::std::conjunction<::std::is_same<T, char>, ::std::is_same<R, ::std::ifstream>>,
         ::std::conjunction<::std::is_same<T, wchar_t>, ::std::is_same<R, ::std::wifstream>>>, R&>
     operator>>(R& _stream, dxString<T>& instance) noexcept(false)
     {
-        if (instance.size) delete[] instance.str;
-        size_t maxszbuf = _dxBUF_SIZE_INPUT_STREAM;                         // temporary size
+        //if (instance.size) delete[] instance.str;
+        size_t maxszbuf = _dxBUF_SIZE_INPUT_STREAM;                     // temporary size
         T* temp = new T[maxszbuf + 1];
-        _stream.getline(temp, ::std::numeric_limits<::std::streamsize>::max(), (T)'\n');
-        instance.size = ::std::char_traits<T>::length(temp);
-        instance.str = new T[instance.size + 1];
-        instance.str = ::std::char_traits<T>::copy(instance.str, temp, ::std::char_traits<T>::length(temp) + 1);
+        _stream.getline(temp, maxszbuf, (T)'\n');
+        maxszbuf = ::std::char_traits<T>::length(temp);                 // using an already useless variable
+        if (instance.size + maxszbuf >= instance.capacity) instance.__reallocate_mem(instance.size + maxszbuf - instance.capacity + 1);
+        instance.str = ::std::char_traits<T>::copy(instance.str + instance.size, temp, maxszbuf + 1);
+        instance.size += maxszbuf;
         delete[] temp;
         return _stream;
     }
@@ -119,21 +138,36 @@ public:
         return static_cast<::std::decay_t<R>&>(_stream << instance.str);
     }
 
-    dxString<T>& operator=(const dxString<T>& dxstr) noexcept(false)
+    dxString<T>& operator=(const T* astr) noexcept(false)
     {
         if (size) delete[] str;
+        size = ::std::char_traits<T>::length(astr);
+        capacity = size + 1;
+        str = new T[capacity];
+        str = ::std::char_traits<T>::copy(str, astr, capacity);
+        return *this;
+    }
+
+    dxString<T>& operator=(const dxString<T>& dxstr) noexcept(false)
+    {
+        if (&dxstr == this) return *this;
+        if (size) delete[] str;
         size = dxstr.size;
-        str = new T[dxstr.size + 1];
-        str = ::std::char_traits<T>::copy(str, dxstr.str, ::std::char_traits<T>::length(dxstr.str) + 1);
+        capacity = dxstr.capacity;
+        str = new T[capacity];
+        str = ::std::char_traits<T>::copy(str, dxstr.str, size + 1);
         return *this;
     }
 
     dxString<T>& operator=(dxString<T>&& dxstr) noexcept(false)
     {
+        if (&dxstr == this) return *this;
         if (size) delete[] str;
         size = ::std::move(dxstr.size);
-        str = new T[dxstr.size + 1];
-        str = ::std::char_traits<T>::move(str, dxstr.str, ::std::char_traits<T>::length(dxstr.str) + 1);
+        capacity = ::std::move(dxstr.capacity);
+        str = new T[capacity];
+        str = ::std::char_traits<T>::copy(str, dxstr.str, size + 1);
+        dxstr.str = nullptr;
         return *this;
     }
 
@@ -142,8 +176,9 @@ public:
         ER_IF(arg == nullptr, ::std::cerr << "arg is nullptr (operator+)!" << ::std::endl;, )
         dxString<T> temp;
         temp.size = size + ::std::char_traits<T>::length(arg);
-        temp.str = new T[temp.size + 1];
-        temp.str = ::std::char_traits<T>::copy(temp.str, str, ::std::char_traits<T>::length(str) + 1);
+        temp.capacity = temp.size + 1;
+        temp.str = new T[temp.capacity];
+        temp.str = ::std::char_traits<T>::copy(temp.str, str, size + 1);
         ::std::char_traits<T>::copy(temp.str + size, arg, ::std::char_traits<T>::length(arg) + 1);
         return temp;
     }
@@ -157,18 +192,11 @@ public:
     dxString<T> operator+(const dxString<T>& arg) const noexcept(false)
     {
         dxString<T> temp;
-        if (arg.size)
-        {
-            size_t dsize = size - arg.size;
-            temp.size = size + arg.size;
-            temp.str = new T[temp.size + 1];
-            temp.str = ::std::char_traits<T>::copy(temp.str, str, ::std::char_traits<T>::length(str) + 1);
-            ::std::char_traits<T>::copy(temp.str + dsize, arg.str, ::std::char_traits<T>::length(arg.str) + 1);
-        }
-        else
-        {
-            temp = *this;
-        }
+        temp.size = size + arg.size;
+        temp.capacity = temp.size + 1;
+        temp.str = new T[temp.capacity];
+        temp.str = ::std::char_traits<T>::copy(temp.str, str, size + 1);
+        ::std::char_traits<T>::copy(temp.str + size, arg.str, arg.size + 1);
         return temp;
     }
 
@@ -182,24 +210,23 @@ public:
     {
         ER_IF(pos >= size, ::std::cerr << "out of range (operator())!" << ::std::endl;, return dxString<T>(); )
         dxString<T> temp;
-        temp.size = (pos + n > size ? size : n);
-        temp.str = new T[temp.size + 1];
-        temp.str = ::std::char_traits<T>::copy(temp.str, str + pos, temp.size + 1);
-
+        temp.size = (pos + n > size ? size - pos : n);
+        temp.capacity = temp.size + 1;
+        temp.str = new T[temp.capacity];
+        temp.str = ::std::char_traits<T>::copy(temp.str, str + pos, temp.capacity);
         return temp;
     }
 
     dxString<T> operator*(size_t n) const noexcept(false)
     {
         dxString<T> temp;
-        size_t tempsize = size;
         temp.size = size * n;
-        temp.str = new T[temp.size + 1];
+        temp.capacity = temp.size + 1;
+        temp.str = new T[temp.capacity];
         for(size_t i {0}; i < n; ++i)
         {
-            ::std::char_traits<T>::copy(temp.str + tempsize * i, str, ::std::char_traits<T>::length(str) + 1);
+            ::std::char_traits<T>::copy(temp.str + size * i, str, ::std::char_traits<T>::length(str) + 1);
         }
-
         return temp;
     }
 
@@ -214,10 +241,10 @@ public:
         return const_cast<const T*>(str);
     }
 
-    T operator[](size_t n) const noexcept(false)
+    T* operator[](size_t n) const noexcept(false)
     {
         ER_IF(n >= size, ::std::cerr << "out of range (operator[])!" << ::std::endl;, return 0; )
-        return str[n];
+        return (str + n);
     }
 
     dxString<T> operator-(const T* arg) const noexcept(false)
@@ -225,7 +252,8 @@ public:
         size_t arg_size = ::std::char_traits<T>::length(arg);
         dxString<T> res;
         res.size = size;
-        res.str = new T[res.size + 1];
+        res.capacity = res.size + 1;
+        res.str = new T[res.capacity];
         const T* cur = str;
         const T* prev = str;
         size_t real_size = 0ull;
@@ -251,7 +279,8 @@ public:
         size_t arg_size = ::std::char_traits<T>::length(arg.str);
         dxString<T> res;
         res.size = size;
-        res.str = new T[res.size + 1];
+        res.capacity = res.size + 1;
+        res.str = new T[res.capacity];
         const T* cur = str;
         const T* prev = str;
         size_t real_size = 0ull;
@@ -282,9 +311,11 @@ public:
         ER_IF(arg == nullptr, ::std::cerr << "arg is nullptr (insert)" << ::std::endl;, return false; )
         dxString<T> temp;
         temp.size = size + ::std::char_traits<T>::length(arg);
-        temp.str = new char[temp.size + 1];
-        temp.str = ::std::char_traits<T>::copy(temp.str, str, ::std::char_traits<T>::length(str) + 1);
-        ::std::char_traits<T>::copy(temp.str + size, arg, ::std::char_traits<T>::length(arg) + 1);
+        temp.capacity = temp.size + 1;
+        temp.str = new T[temp.capacity];
+        temp.str = ::std::char_traits<T>::copy(temp.str, str, size + 1);
+        ::std::char_traits<T>::move(temp.str + pos + ::std::char_traits<T>::length(arg), str + pos, size - pos + 1);
+        ::std::char_traits<T>::copy(temp.str + pos, arg, ::std::char_traits<T>::length(arg));
         *this = temp;
         return true;
     }
@@ -295,7 +326,7 @@ public:
         size_t arg_size2 = ::std::char_traits<T>::length(s2replace);
         T* res;
         if (static_cast<ptrdiff_t>(arg_size2) - static_cast<ptrdiff_t>(arg_size) > 0)   res = new T[size * (arg_size2 - arg_size)]; // approximate
-        else                        res = new T[size];
+        else                                                                            res = new T[size];
         const T* cur = str;
         const T* prev = str;
         size_t real_size = 0ull;
@@ -310,6 +341,7 @@ public:
         }
         ::std::char_traits<T>::copy(res + real_size, prev, ::std::char_traits<T>::length(prev) + 1);
         *this = dxString(res);
+        delete[] res;
         return *this;
     }
 
@@ -319,7 +351,7 @@ public:
         size_t arg_size2 = ::std::char_traits<T>::length(s2replace.str);
         T* res;
         if (static_cast<ptrdiff_t>(arg_size2) - static_cast<ptrdiff_t>(arg_size) > 0)   res = new T[size * (arg_size2 - arg_size)]; // approximate
-        else                        res = new T[size];
+        else                                                                            res = new T[size];
         const T* cur = str;
         const T* prev = str;
         size_t real_size = 0ull;
@@ -334,6 +366,7 @@ public:
         }
         ::std::char_traits<T>::copy(res + real_size, prev, ::std::char_traits<T>::length(prev) + 1);
         *this = dxString(res);
+        delete[] res;
         return *this;
     }
 
@@ -347,6 +380,9 @@ int main()
     ::std::ifstream read("./input.txt");
     ER_IFN(read.is_open(),, return 1; )
     read >> main_str;
+    read >> str_to_delete;
+    read >> str_to_replace;
+
     ::std::cout << main_str << ::std::endl;
     dxString temp = ((main_str + "hello!)") - dxString("Hel"));
     ::std::cout << temp << ::std::endl;
@@ -354,19 +390,24 @@ int main()
     ::std::cout << temp << ::std::endl;
     temp = temp - (temp - "lo,");
     ::std::cout << temp << ::std::endl;
-    read >> str_to_delete;
     ::std::cout << str_to_delete << ::std::endl;
-    read >> str_to_replace;
     ::std::cout << str_to_replace * 6 << ::std::endl;
     ::std::cout << str_to_replace << ::std::endl;
+
     ::std::ofstream write("./input.txt");
     main_str.replace_substr(str_to_delete, str_to_replace);
     write << main_str << ::std::endl;
     main_str.replace_substr("Goodbye", "World");
     write << main_str << ::std::endl;
+    
     ::std::cout << main_str(3, 30) << ::std::endl;
     ::std::cout << main_str[14] << ::std::endl;
     ::std::cout << main_str - "o" << ::std::endl;
+
+    dxString test = "hello world!";
+    ::std::cout << test << ::std::endl;
+    test.insert("pretty ", 6);
+    ::std::cout << test << ::std::endl;
     
     return 0;
 }
