@@ -1,6 +1,8 @@
 #.PHONY: all clean
 
 CXX = g++
+DEBUGFLAGS = -g
+RELEASEFLAGS = -O2
 
 ifeq ($(OS), Windows_NT)
 	SHELL = CMD
@@ -32,27 +34,27 @@ main1: ./Source/main1.cpp $(EXE_main1)
 
 ./Source/fraction.o: ./Source/fraction.cpp ./Source/fraction.h
 	$(info processing....)
-	$(CXX) -O2 $(CFLAGS) $< -o $@
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
 	
 ./Source/CP_main1.o: ./Source/CP_main1.cpp ./Source/fraction.cpp
 	$(info processing....)
-	$(CXX) -O2 $(CFLAGS) $< -o $@
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
 	
 ./Source/main1.o: ./Source/main1.cpp
 	$(info processing....)
-	$(CXX) -O2 $(CFLAGS) $< -o $@
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
 
 ./Source/fraction.d.o: ./Source/fraction.cpp ./Source/fraction.h
 	$(info processing....)
-	$(CXX) -g $(CFLAGS) $< -o $@
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
 ./Source/CP_main1.d.o: ./Source/CP_main1.cpp ./Source/fraction.cpp
 	$(info processing....)
-	$(CXX) -g $(CFLAGS) $< -o $@
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
 ./Source/main1.d.o: ./Source/main1.cpp
 	$(info processing....)
-	$(CXX) -g $(CFLAGS) $< -o $@
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
 $(EXE_CP1d): ./Source/CP_main1.d.o ./Source/fraction.d.o
 	$(info processing......)
