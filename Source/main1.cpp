@@ -18,25 +18,19 @@
 #endif
 
 #ifndef ERROR_
-
 #if defined(_WIN32)
-#define ERROR_				{ ::std::cout << "![EXCPT]" << (const char*)defDX__FILELINE << ::std::endl; 	\
-							throw ::std::exception(); }
+#define ERROR_				{ ::std::cerr << "![EXCPT]" << (const char*)defDX__FILELINE << ::std::endl; }
 #elif defined(__unix__)
 #if defined(__linux__)
-#define ERROR_				try {																			\
-                            	throw ::std::exception();													\
-							} catch (::std::exception& x) {													\
-								::std::cout << "![EXCPT]" << (const char*)defDX__FILELINE << ::std::endl;	\
-							}
+#define ERROR_				{ ::std::cerr << "![EXCPT]" << (const char*)defDX__FILELINE << ::std::endl; }
 #else
 #error This UNIX operating system is not supported
 #endif
 #else
 #error This operating system is not supported
 #endif
-
 #endif
+
 #ifndef ER_IF
 #define ER_IF(x, beforeExc, AfterExc) if ( (x) ) { beforeExc ERROR_ AfterExc }
 #endif
@@ -53,7 +47,6 @@
 #define UNSETBITS(x,y,pos)	( (x) &= (~( y << (pos) ) ) )
 
 #define _dxBUF_SIZE_INPUT_STREAM 4096
-#define _dxREALLOC_MEM_WAY(x) ((x) = (x) * 2)
 
 template<typename T>
 const T* find_substr(const T* src, const T* substr);
@@ -62,57 +55,23 @@ template<typename T, typename I = ::std::enable_if_t<::std::disjunction_v<::std:
 class dxString
 {
 private:
-    size_t size;
-    size_t capacity;
-    T* str;
-
-public:
-    dxString() noexcept(true) : size(0ull), capacity(0ull), str(nullptr) {}
-
-    dxString(const T* astr) noexcept(false)
-    {
-        ER_IF(astr == nullptr, ::std::cerr << "arg is nullptr (constructor(const T*))" << ::std::endl;, )
-        size = __get_real_size(astr);
-        capacity = ::std::char_traits<T>::length(astr) + 1;
-        str = new T[capacity];
-        str = ::std::char_traits<T>::copy(str, astr, capacity);
-    }
-
-    dxString(const dxString<T>& dxstr) noexcept(false) : size(dxstr.size), capacity(dxstr.capacity)
-    {
-        str = new T[capacity];
-        str = ::std::char_traits<T>::copy(str, dxstr.str, size + 1);
-    }
-
-    dxString(dxString<T>&& dxstr) noexcept(false) : size(::std::move(dxstr.size)), capacity(::std::move(dxstr.capacity))
-    {
-        str = new T[capacity];
-        str = ::std::char_traits<T>::copy(str, dxstr.str, size + 1);
-        dxstr.str = nullptr;
-    }
-
-    [[deprecated]]
-    dxString(T astr) noexcept(false) : size(1ull), capacity(2ull)
-    {
-        str = new T[2ull];
-        str[0] = astr;
-        str[1] = 0;
-    }
-
-    ~dxString() noexcept(false)
-    {
-        delete[] str;
-        size = 0ull;
-        capacity = 0ull;
-    }
+    size_t szElem;          // count of 'symbols' in str
+    size_t szByte;          // size (in bytes) of str (not whole capacity allocated for it)
+    T* str;                 // [szByte]
+    size_t* __idx;          // [szByte] (for realization), but in fact [szElem] is enough
 
     // str is null-terminated array of T
-    size_t __get_real_size(const T* str)
+    void __add_utf_str(const T* str) noexcept(false)
     {
+        size_t* __temp_idx = new size_t[szElem + ::std::char_traits<T>::length(str)];    // szElem + N >= than enough
+		if (szElem) ::std::memcpy(__temp_idx, __idx, szElem * sizeof(size_t));
+		delete[] __idx;
+		__idx = __temp_idx;
         size_t i = 0ull;
         size_t _lenght = 0ull;
         while(str[i])
         {
+            __idx[szElem + _lenght++] = i + szElem;
             if (!GETBIT(str[i], 8))
             {
                 ++i;
@@ -125,97 +84,150 @@ public:
             {
                 i += 3ull;
             }
-            else if (!GETBIT(str[i], 4))
+            else/* if (!GETBIT(str[i], 4))*/
             {
                 i += 4ull;
             }
-            ++_lenght;
         }
-        return _lenght;
+        szElem += _lenght;
+		szByte += i;
     }
 
-    void __reallocate_mem(size_t add_cpcty = 0ull) noexcept(false)
+    void __shrink_to_size()
     {
-        if (!add_cpcty)     _dxREALLOC_MEM_WAY(capacity);
-        else                capacity += add_cpcty;
-        T* tempstr = new T[capacity];
-        if (size)   ::std::char_traits<T>::copy(tempstr, str, size + 1);               // +1 for '\0'
-        delete[] str;                                                               // well defined by standart for nullptr
-        str = tempstr;
+        szByte = 0ull;
+        szElem = 0ull;
+        __add_utf_str(str);
+        T* temp = new T[szByte + 1];
+        temp = ::std::char_traits<T>::copy(temp, str, szByte + 1);
+        delete[] str;
+        str = temp;
+    }
+
+public:
+    dxString() noexcept(true) : szElem(0ull), szByte(0ull), str(nullptr), __idx(nullptr) {}
+
+    dxString(const T* astr) noexcept(false) : szElem(0ull), szByte(0ull), str(nullptr), __idx(nullptr)
+    {
+        *this = astr;
+    }
+
+    dxString(const dxString<T>& dxstr) noexcept(false) : szElem(0ull), szByte(0ull), str(nullptr), __idx(nullptr)
+    {
+        *this = dxstr;
+    }
+
+    dxString(dxString<T>&& dxstr) noexcept(false) : szElem(0ull), szByte(0ull), str(nullptr), __idx(nullptr)
+    {
+        *this = ::std::move(dxstr);
+    }
+
+    [[deprecated]]
+    dxString(T astr) noexcept(false) : szElem(1ull), szByte(2ull)
+    {
+        str = new T[2ull];
+        str[0] = astr;
+        str[1] = 0;
+    }
+
+    ~dxString() noexcept(false)
+    {
+        delete[] __idx;
+        delete[] str;
+        szElem = 0ull;
+        szByte = 0ull;
     }
 
     // reads and appends following 'line' from file (until '\n' is encountered)
-    template<typename R>
-    friend ::std::enable_if_t<::std::disjunction_v<
-        ::std::conjunction<::std::is_same<T, char>, ::std::is_same<R, ::std::ifstream>>,
-        ::std::conjunction<::std::is_same<T, wchar_t>, ::std::is_same<R, ::std::wifstream>>>, R&>
-    operator>>(R& _stream, dxString<T>& instance) noexcept(false)
+    template< template<typename, typename> typename C, typename _C, typename _T >
+    friend ::std::enable_if_t<::std::conjunction_v<
+        ::std::is_base_of<::std::basic_istream<_C, _T>, C<_C, _T>>,
+        ::std::is_same<T, _C>>, C<_C, _T>&>
+    operator>>(C<_C, _T>& _stream, dxString<T>& instance) noexcept(false)
     {
-        //if (instance.size) delete[] instance.str;
-        size_t maxszbuf = _dxBUF_SIZE_INPUT_STREAM;                     // temporary size
+        size_t maxszbuf = _dxBUF_SIZE_INPUT_STREAM;                     // temporary szElem
         T* temp = new T[maxszbuf + 1];
         _stream.getline(temp, maxszbuf, (T)'\n');
-        maxszbuf = ::std::char_traits<T>::length(temp);                 // using an already useless variable
-        if (instance.size + maxszbuf >= instance.capacity) instance.__reallocate_mem(instance.size + maxszbuf - instance.capacity + 1);
-        instance.str = ::std::char_traits<T>::copy(instance.str + instance.size, temp, maxszbuf + 1);
-        instance.size += instance.__get_real_size(temp);
+        size_t old_capacity = instance.szByte;
+        instance.__add_utf_str(temp);
+        T* tempstr = new T[instance.szByte + 1];
+        if (instance.szElem)    ::std::char_traits<T>::copy(tempstr, instance.str, old_capacity);
+        ::std::char_traits<T>::copy(tempstr + old_capacity, temp, ::std::char_traits<T>::length(temp) + 1);
+        delete[] instance.str;                                          // well defined by standart for nullptr
+        instance.str = tempstr;
         delete[] temp;
         return _stream;
     }
 
-    template<typename R>
-    friend ::std::enable_if_t<::std::disjunction_v<
-        ::std::conjunction<::std::is_same<T, char>, ::std::is_same<R, ::std::ostream>>,
-        ::std::conjunction<::std::is_same<T, wchar_t>, ::std::is_same<R, ::std::wostream>>,
-        ::std::conjunction<::std::is_same<T, char>, ::std::is_same<R, ::std::ofstream>>,
-        ::std::conjunction<::std::is_same<T, wchar_t>, ::std::is_same<R, ::std::wofstream>>>, ::std::decay_t<R>&>
-    operator<<(R& _stream, const dxString<T>& instance) noexcept(false)
+    template< template<typename, typename> typename C, typename _C, typename _T >
+    friend ::std::enable_if_t<::std::conjunction_v<
+        ::std::is_base_of<::std::basic_ostream<_C, _T>, C<_C, _T>>,
+        ::std::is_same<T, _C>>, C<_C, _T>&>
+    operator>>(C<_C, _T>& _stream, dxString<T>& instance) noexcept(false)
     {
-        return static_cast<::std::decay_t<R>&>(_stream << instance.str);
+        return static_cast<C<_C, _T>&>(_stream << instance.str);
     }
 
     dxString<T>& operator=(const T* astr) noexcept(false)
     {
-        if (size) delete[] str;
-        size = __get_real_size(astr);
-        capacity = ::std::char_traits<T>::length(astr) + 1;
-        str = new T[capacity];
-        str = ::std::char_traits<T>::copy(str, astr, capacity);
+        ER_IF(astr == nullptr, ::std::cerr << "arg is nullptr (operator=(const T*))" << ::std::endl;, )
+        if (szElem)
+        {
+            delete[] __idx;
+            delete[] str;
+        }
+		this->__add_utf_str(astr);
+        str = new T[szByte + 1];
+        str = ::std::char_traits<T>::copy(str, astr, szByte + 1);
         return *this;
     }
 
     dxString<T>& operator=(const dxString<T>& dxstr) noexcept(false)
     {
         if (&dxstr == this) return *this;
-        if (size) delete[] str;
-        size = dxstr.size;
-        capacity = dxstr.capacity;
-        str = new T[capacity];
-        str = ::std::char_traits<T>::copy(str, dxstr.str, size + 1);
+        if (szElem)
+        {
+            delete[] __idx;
+            delete[] str;
+        }
+        szElem = dxstr.szElem;
+        szByte = dxstr.szByte;
+        str = new T[szByte + 1];
+        str = ::std::char_traits<T>::copy(str, dxstr.str, szByte + 1);
+        __idx = new size_t[szElem];
+        ::std::memcpy(__idx, dxstr.__idx, szElem * sizeof(size_t));
         return *this;
     }
 
     dxString<T>& operator=(dxString<T>&& dxstr) noexcept(false)
     {
         if (&dxstr == this) return *this;
-        if (size) delete[] str;
-        size = ::std::move(dxstr.size);
-        capacity = ::std::move(dxstr.capacity);
-        str = new T[capacity];
-        str = ::std::char_traits<T>::copy(str, dxstr.str, size + 1);
-        dxstr.str = nullptr;
+        if (szElem)
+        {
+            delete[] __idx;
+            delete[] str;
+        }
+        szElem = ::std::move(dxstr.szElem);
+        szByte = ::std::move(dxstr.szByte);
+        str = new T[szByte + 1];
+        str = ::std::char_traits<T>::copy(str, dxstr.str, szByte + 1);
+        __idx = new size_t[szElem];
+        ::std::memcpy(__idx, dxstr.__idx, szElem * sizeof(size_t));
         return *this;
     }
 
     dxString<T> operator+(const T* arg) const noexcept(false)
     {
-        ER_IF(arg == nullptr, ::std::cerr << "arg is nullptr (operator+)!" << ::std::endl;, )
+        ER_IF(arg == nullptr, ::std::cerr << "arg is nullptr (operator+)!" << ::std::endl;, return *this; )
         dxString<T> temp;
-        temp.size = size + __get_real_size(arg);
-        temp.capacity += ::std::char_traits<T>::length(arg) + 1;
-        temp.str = new T[temp.capacity];
-        temp.str = ::std::char_traits<T>::copy(temp.str, str, size + 1);
-        ::std::char_traits<T>::copy(temp.str + size, arg, ::std::char_traits<T>::length(arg) + 1);
+        temp.szElem = szElem;
+        temp.szByte = szByte;
+        temp.__idx = new size_t[szElem];
+        ::std::memcpy(temp.__idx, __idx, szElem * sizeof(size_t));
+        temp.__add_utf_str(arg);
+        temp.str = new T[temp.szByte + 1];
+        temp.str = ::std::char_traits<T>::copy(temp.str, str, szByte);
+        ::std::char_traits<T>::copy(temp.str + szByte, arg, temp.szByte - szByte + 1);
         return temp;
     }
 
@@ -228,11 +240,14 @@ public:
     dxString<T> operator+(const dxString<T>& arg) const noexcept(false)
     {
         dxString<T> temp;
-        temp.size = size + arg.size;
-        temp.capacity = temp.size + 1;
-        temp.str = new T[temp.capacity];
-        temp.str = ::std::char_traits<T>::copy(temp.str, str, size + 1);
-        ::std::char_traits<T>::copy(temp.str + size, arg.str, arg.size + 1);
+        temp.szElem = szElem;
+        temp.szByte = szByte;
+        temp.__idx = new size_t[szElem];
+        ::std::memcpy(temp.__idx, __idx, szElem * sizeof(size_t));
+        temp.__add_utf_str(arg.str);
+        temp.str = new T[temp.szByte + 1];
+        temp.str = ::std::char_traits<T>::copy(temp.str, str, szByte);
+        ::std::char_traits<T>::copy(temp.str + szByte, arg.str, temp.szByte - szByte + 1);
         return temp;
     }
 
@@ -242,26 +257,21 @@ public:
         return *this;
     }
 
-    dxString<T> operator()(size_t pos, size_t n) const noexcept(false)
-    {
-        ER_IF(pos >= size, ::std::cerr << "out of range (operator())!" << ::std::endl;, return dxString<T>(); )
-        dxString<T> temp;
-        temp.size = (pos + n > size ? size - pos : n);
-        temp.capacity = temp.size + 1;
-        temp.str = new T[temp.capacity];
-        temp.str = ::std::char_traits<T>::copy(temp.str, str + pos, temp.capacity);
-        return temp;
-    }
-
     dxString<T> operator*(size_t n) const noexcept(false)
     {
         dxString<T> temp;
-        temp.size = size * n;
-        temp.capacity = temp.size + 1;
-        temp.str = new T[temp.capacity];
+        temp.szElem = szElem * n;
+        temp.szByte = szByte * n;
+        temp.str = new T[temp.szByte + 1];
+        temp.__idx = new size_t[temp.szElem];
         for(size_t i {0}; i < n; ++i)
         {
-            ::std::char_traits<T>::copy(temp.str + size * i, str, ::std::char_traits<T>::length(str) + 1);
+            ::std::char_traits<T>::copy(temp.str + szByte * i, str, szByte + 1);
+            ::std::memcpy(temp.__idx + szByte * i, __idx, szByte * sizeof(size_t));
+            for(size_t j {0}; j < szByte; ++j)
+            {
+                temp.__idx[szByte * i + j] += szByte * i;
+            }
         }
         return temp;
     }
@@ -272,24 +282,13 @@ public:
         return *this;
     }
 
-    operator const T*() const noexcept(false)
-    {
-        return const_cast<const T*>(str);
-    }
-
-    T* operator[](size_t n) const noexcept(false)
-    {
-        ER_IF(n >= size, ::std::cerr << "out of range (operator[])!" << ::std::endl;, return 0; )
-        return (str + n);
-    }
-
     dxString<T> operator-(const T* arg) const noexcept(false)
     {
         size_t arg_size = ::std::char_traits<T>::length(arg);
         dxString<T> res;
-        res.size = size;
-        res.capacity = res.size + 1;
-        res.str = new T[res.capacity];
+        res.szElem = szElem;
+        res.szByte = szByte;
+        res.str = new T[res.szByte + 1];
         const T* cur = str;
         const T* prev = str;
         size_t real_size = 0ull;
@@ -301,6 +300,7 @@ public:
             prev = cur;
         }
         ::std::char_traits<T>::copy(res.str + real_size, prev, ::std::char_traits<T>::length(prev) + 1);
+        res.__shrink_to_size();
         return res;
     }
 
@@ -314,9 +314,9 @@ public:
     {
         size_t arg_size = ::std::char_traits<T>::length(arg.str);
         dxString<T> res;
-        res.size = size;
-        res.capacity = res.size + 1;
-        res.str = new T[res.capacity];
+        res.szElem = szElem;
+        res.szByte = szByte;
+        res.str = new T[res.szByte + 1];
         const T* cur = str;
         const T* prev = str;
         size_t real_size = 0ull;
@@ -328,6 +328,7 @@ public:
             prev = cur;
         }
         ::std::char_traits<T>::copy(res.str + real_size, prev, ::std::char_traits<T>::length(prev) + 1);
+        res.__shrink_to_size();
         return res;
     }
 
@@ -337,21 +338,60 @@ public:
         return *this;
     }
 
-    size_t getSize() const noexcept(true)
+    dxString<T> operator()(size_t pos, size_t n) const noexcept(false)
     {
-        return size;
+        ER_IF(pos >= szElem, ::std::cerr << "out of range (operator())!" << ::std::endl;, return ::dxString<T>(); )
+        dxString<T> temp;
+        if (pos + n > szElem)
+        {
+            temp.szElem = szElem - pos;
+            temp.szByte = szByte - __idx[pos];
+        }
+        else
+        {
+            temp.szElem = n;
+            temp.szByte = __idx[pos + n] - __idx[pos];
+        }
+        temp.str = new T[temp.szByte + 1];
+        temp.str = ::std::char_traits<T>::copy(temp.str, str + __idx[pos], temp.szByte);
+        temp.__idx = new size_t[temp.szElem];
+        ::std::memcpy(temp.__idx, __idx + pos, temp.szElem * sizeof(size_t));
+        for(size_t j {0}; j < temp.szElem; ++j)
+        {
+            temp.__idx[j] -= pos;
+        }
+        temp.str[temp.szByte] = 0;
+        return temp;
+    }
+
+    T& operator[](size_t n) const noexcept(false)
+    {
+        ER_IF(n >= szElem,, throw ::std::out_of_range("out of range (operator[])!"); )
+        return *(str + __idx[n]);
+    }
+
+    operator const T*() const noexcept(false)
+    {
+        return const_cast<const T*>(str);
     }
 
     bool insert(const T* arg, size_t pos) noexcept(false)
     {
         ER_IF(arg == nullptr, ::std::cerr << "arg is nullptr (insert)" << ::std::endl;, return false; )
+        ER_IF(pos > szElem, ::std::cerr << "pos > 'size of str' (insert)" << ::std::endl;, return false; )
         dxString<T> temp;
-        temp.size = size + __get_real_size(arg);
-        temp.capacity = temp.size + ::std::char_traits<T>::length(arg) + 1;
-        temp.str = new T[temp.capacity];
-        temp.str = ::std::char_traits<T>::copy(temp.str, str, size + 1);
-        ::std::char_traits<T>::move(temp.str + pos + ::std::char_traits<T>::length(arg), str + pos, size - pos + 1);
-        ::std::char_traits<T>::copy(temp.str + pos, arg, ::std::char_traits<T>::length(arg));
+        temp.szElem = szElem;
+        temp.szByte = szByte;
+        temp.__idx = new size_t[szElem];
+        ::std::memcpy(temp.__idx, __idx, szElem * sizeof(size_t));
+        temp.__add_utf_str(arg);
+        temp.str = new T[temp.szByte + 1];
+        size_t shift = 0ull;
+        if (pos == szElem)  shift = szByte;
+        else                shift = temp.__idx[pos + 1] - 1;
+        temp.str = ::std::char_traits<T>::copy(temp.str, str, szByte + 1);
+        ::std::char_traits<T>::move(temp.str + shift + ::std::char_traits<T>::length(arg), str + shift, szByte - shift);
+        ::std::char_traits<T>::copy(temp.str + shift, arg, ::std::char_traits<T>::length(arg));
         *this = temp;
         return true;
     }
@@ -361,8 +401,8 @@ public:
         size_t arg_size = ::std::char_traits<T>::length(s2find);
         size_t arg_size2 = ::std::char_traits<T>::length(s2replace);
         T* res;
-        if (static_cast<ptrdiff_t>(arg_size2) - static_cast<ptrdiff_t>(arg_size) > 0)   res = new T[capacity * (arg_size2 - arg_size)]; // approximate
-        else                                                                            res = new T[capacity];
+        if (static_cast<ptrdiff_t>(arg_size2) - static_cast<ptrdiff_t>(arg_size) > 0)   res = new T[szByte * (arg_size2 - arg_size)]; // approximate
+        else                                                                            res = new T[szByte];
         const T* cur = str;
         const T* prev = str;
         size_t real_size = 0ull;
@@ -377,6 +417,7 @@ public:
         }
         ::std::char_traits<T>::copy(res + real_size, prev, ::std::char_traits<T>::length(prev) + 1);
         *this = dxString(res);
+        this->__shrink_to_size();
         delete[] res;
         return *this;
     }
@@ -386,8 +427,8 @@ public:
         size_t arg_size = ::std::char_traits<T>::length(s2find.str);
         size_t arg_size2 = ::std::char_traits<T>::length(s2replace.str);
         T* res;
-        if (static_cast<ptrdiff_t>(arg_size2) - static_cast<ptrdiff_t>(arg_size) > 0)   res = new T[capacity * (arg_size2 - arg_size)]; // approximate
-        else                                                                            res = new T[capacity];
+        if (static_cast<ptrdiff_t>(arg_size2) - static_cast<ptrdiff_t>(arg_size) > 0)   res = new T[szByte * (arg_size2 - arg_size)]; // approximate
+        else                                                                            res = new T[szByte];
         const T* cur = str;
         const T* prev = str;
         size_t real_size = 0ull;
@@ -402,8 +443,19 @@ public:
         }
         ::std::char_traits<T>::copy(res + real_size, prev, ::std::char_traits<T>::length(prev) + 1);
         *this = dxString(res);
+        this->__shrink_to_size();
         delete[] res;
         return *this;
+    }
+
+    size_t size() const noexcept(true)
+    {
+        return szElem;
+    }
+
+    size_t length() const noexcept(true)
+    {
+        return szElem;
     }
 
 };
@@ -421,7 +473,7 @@ int main()
 
     ::std::ofstream write("./output.txt");
     main_str.replace_substr(str_to_delete, str_to_replace);
-    write << main_str << ::std::endl;
+    write << main_str;
     
     return 0;
 }
