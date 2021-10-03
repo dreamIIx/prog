@@ -66,11 +66,12 @@ class Matrix
 public:
     bool completed;
     size_t size; // is N
-    ::std::vector<::std::vector<::fc::Fraction>> start_mtx; // N x (N + 1)
+    ::std::vector<::std::vector<double>> start_mtx; // N x (N + 1)
     ::std::vector<::std::vector<::fc::Fraction>> mtx; // N x (N + 1)
-    ::std::vector<::std::vector<double>> mtx_double; // N x (N + 1)
+    ::std::vector<::std::vector<double>> mtx_double; // N x (N)
     ::std::vector<::std::vector<::fc::Fraction>> inv_mtx; // N x N
     ::std::vector<::fc::Fraction> res; // N
+    ::std::vector<double> res_double; // N
 
     Matrix() noexcept(true) : completed(false), size(0u) {}
 
@@ -84,6 +85,7 @@ public:
         inv_mtx.reserve(size);
         mtx_double.reserve(size);
         res.reserve(size);
+        res_double.reserve(size);
         for(size_t i {0}; i < size; ++i)
         {
             mtx.emplace_back(::std::vector<::fc::Fraction>());
@@ -93,6 +95,7 @@ public:
             mtx_double.emplace_back(::std::vector<double>());
             mtx_double.back().reserve(size);
             res.emplace_back(0ll, 1ll);
+            res_double.emplace_back(0.);
         }
 
         for(size_t i {0}; i < size; ++i)
@@ -107,7 +110,7 @@ public:
                 else inv_mtx[i].emplace_back();
             }
         }
-        start_mtx = mtx;
+        //start_mtx = mtx;
         completed = true;
     }
 
@@ -118,6 +121,7 @@ public:
         inv_mtx.reserve(size);
         mtx_double.reserve(size);
         res.reserve(size);
+        res_double.reserve(size);
         for(size_t i {0}; i < size; ++i)
         {
             mtx.emplace_back(::std::vector<::fc::Fraction>());
@@ -127,6 +131,7 @@ public:
             mtx_double.emplace_back(::std::vector<double>());
             mtx_double.back().reserve(size);
             res.emplace_back(0ll, 1ll);
+            res_double.emplace_back(0.);
         }
 
         for(size_t i {0}; i < size; ++i)
@@ -145,29 +150,29 @@ public:
         {
             mtx[i].emplace_back(i, 1ull);
         }
-        start_mtx = mtx;
+        //start_mtx = mtx;
         completed = true;
     }
 
-    template<typename _T>
-    static ::std::vector<::std::vector<_T>> MultMtxOnMtx(::std::vector<::std::vector<_T>>& w, ::std::vector<::std::vector<_T>>& v) noexcept(false)
+    ::std::vector<::std::vector<double>> MultMtxOnMtx(::std::vector<::std::vector<double>>& v) noexcept(false)
     {
-        ER_IF(w.size() != v.size(), ::std::cout << "Ill-formed vector!" << ::std::endl;, return ::std::vector<::std::vector<_T>>(); )
-        ::std::vector<::std::vector<_T>> func_result;
-        func_result.reserve(w.size());
-        for(size_t i {0}; i < w.size(); ++i)
+        ER_IF(mtx_double.size() != v.size(), ::std::cout << "Ill-formed vector!" << ::std::endl;, return ::std::vector<::std::vector<double>>(); )
+        ::std::vector<::std::vector<double>> func_result;
+        func_result.reserve(mtx_double.size());
+        for(size_t i {0}; i < mtx_double.size(); ++i)
         {
-            func_result.emplace_back(::std::vector<_T>());
+            func_result.emplace_back(::std::vector<double>());
             func_result.back().reserve(v[0].size());
         }
         for(size_t k {0}; k < v[0].size(); ++k)
         {
-            for(size_t i {0}; i < w.size(); ++i)
+            for(size_t i {0}; i < mtx_double.size(); ++i)
             {
-                _T temp_res_;
-                for(size_t j {0}; j < w.size(); ++j)
+                double temp_res_ = 0.;
+                size_t j = 0ull;
+                for(size_t j {0}; j < mtx_double.size(); ++j)
                 {
-                    temp_res_ += w[i][j] * v[j][k];
+                    temp_res_ += mtx_double[k][j] * v[j][i];
                 }
                 func_result[i].emplace_back(temp_res_);
             }
@@ -238,6 +243,37 @@ public:
                     {
                         mtx[k][j] -= mtx[i + 1][j] * diff;
                         if (j != size) inv_mtx[k][j] -= inv_mtx[i + 1][j] * diff;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    template<typename T>
+    bool __GaussForwardReverse(::std::vector<::std::vector<T>>& v) noexcept(false)
+    {
+        ER_IFN(completed, ::std::cout << "Matrix is incompleted!" << ::std::endl;, return false; )
+        ptrdiff_t idx_swapedline = size - 2;
+        for(ptrdiff_t i {size - 2}; i >= 0; --i)
+        {
+            if (v[i + 1][i + 1] == 0)
+            {
+                if (idx_swapedline >= size) idx_swapedline = i;
+                ::std::swap(v[idx_swapedline], v[i + 1]);
+                ++i;
+                continue;
+            }
+
+            for(ptrdiff_t k {i}; k >= 0; --k)
+            {
+                double diff = 1. / v[i + 1][i + 1];
+                diff *= v[k][i + 1];
+                for(size_t j {0}; j < size + 1; ++j)
+                {
+                    if (diff)
+                    {
+                        v[k][j] -= v[i + 1][j] * diff;
                     }
                 }
             }
@@ -321,6 +357,32 @@ public:
         return true;
     }
 
+    template<typename T>
+    bool __GaussBackward(::std::vector<::std::vector<T>>& v) noexcept(false)
+    {
+        ER_IFN(completed, ::std::cout << "Matrix is incompleted!" << ::std::endl;, return false; )
+        for(size_t i {0}; i < size; ++i)
+        {
+            for(size_t j {0}; j < size + 1; ++j)
+            {
+                if (i != j) v[i][j] /= v[i][i];
+            }
+            v[i][i] = 1;
+        }
+
+        for(ptrdiff_t i = static_cast<ptrdiff_t>(size - 1); i >= 0; --i)
+        {
+            double temp_res = 0;
+            for(ptrdiff_t j {i + 1}; j < size; ++j)
+            {
+                temp_res += v[i][j] * res_double[j];
+            }
+            auto temp = v[i][size] - temp_res;
+            if (res_double[i] == 0)    res_double[i] = temp;
+        }
+        return true;
+    }
+
     // if max szMATRIX == 64
     ::fc::Fraction det(unsigned long long exc = 0ull, int k = 0, int _spec = 1)
     {
@@ -356,11 +418,11 @@ public:
     void CholezkyMetod()
     {
         mtx_double[0][0] = ::std::sqrt(start_mtx[0][0]);
-        for(size_t i {0}; i < size; ++i)
+        for(size_t i {1}; i < start_mtx.size(); ++i)
         {
             mtx_double[i][0] = start_mtx[i][0] / mtx_double[0][0];
         }
-        for(size_t i {1}; i < size; ++i)
+        for(size_t i {1}; i < start_mtx.size(); ++i)
         {
             double temp = start_mtx[i][i];
             for(size_t j {0}; j < i; ++j)
@@ -368,16 +430,13 @@ public:
                 temp -= ::std::pow(mtx_double[i][j], 2);
             }
             mtx_double[i][i] = ::std::sqrt(temp);
-            if (i != size - 1)
+            if (i != start_mtx.size() - 1)
             {
-                for(size_t j {i + 1}; j < size; ++j)
+                for(size_t j {i + 1}; j < start_mtx.size(); ++j)
                 {
                     temp = start_mtx[j][i];
-                    ::std::cout << start_mtx[j][i] << ::std::endl;
                     for(size_t k {0}; k < i; ++k)
                     {
-                        ::std::cout << mtx_double[i][k] << ::std::endl;
-                        ::std::cout << mtx_double[j][k] << ::std::endl;
                         temp -= mtx_double[i][k] * mtx_double[j][k];
                     }
                     mtx_double[j][i] = temp / mtx_double[i][i];
@@ -388,9 +447,9 @@ public:
 
     void double_T()
     {
-        for(size_t i {0}; i < size; ++i)
+        for(size_t i {0}; i < mtx_double.size(); ++i)
         {
-            for(size_t j {i + 1}; j < size; ++j)
+            for(size_t j {i + 1}; j < mtx_double.size(); ++j)
             {
                 ::std::swap(mtx_double[i][j], mtx_double[j][i]);
             }
@@ -447,12 +506,11 @@ public:
     void printStartMtx() noexcept(false)
     {
         ER_IFN(completed, ::std::cout << "Matrix is incompleted!" << ::std::endl;, return; )
-        for(size_t i = 0ull; i < size; ++i)
+        for(size_t i = 0ull; i < start_mtx.size(); ++i)
         {
-            for(size_t j = 0ull; j < size + 1; ++j)
+            for(size_t j = 0ull; j < start_mtx.size(); ++j)
             {
-                ::std::cout << ::std::setw(8) << start_mtx[i][j].num << '/';
-                ::std::cout << start_mtx[i][j].den << ' ';
+                ::std::cout << ::std::setw(12) << start_mtx[i][j] << ' ';
             }
             ::std::cout << ::std::endl;
         }
@@ -475,11 +533,11 @@ public:
     void printDoubleMtx() noexcept(false)
     {
         ER_IFN(completed, ::std::cout << "Matrix is incompleted!" << ::std::endl;, return; )
-        for(size_t i = 0ull; i < size; ++i)
+        for(size_t i = 0ull; i < mtx_double.size(); ++i)
         {
-            for(size_t j = 0ull; j < size; ++j)
+            for(size_t j = 0ull; j < mtx_double.size(); ++j)
             {
-                ::std::cout << ::std::setw(10) << mtx_double[i][j] << ' ';
+                ::std::cout << ::std::setw(12) << mtx_double[i][j] << ' ';
             }
             ::std::cout << ::std::endl;
         }
@@ -492,6 +550,16 @@ public:
         {
             ::std::cout << ::std::setw(8) << res[i].num << '/';
             ::std::cout << res[i].den << ' ';
+        }
+        ::std::cout << ::std::endl;
+    }
+
+    void printDoubleRes() noexcept(false)
+    {
+        ER_IFN(completed, ::std::cout << "Matrix is incompleted!" << ::std::endl;, return; )
+        for(size_t i = 0ull; i < size; ++i)
+        {
+            ::std::cout << ::std::setw(12) << res_double[i] << ' ';
         }
         ::std::cout << ::std::endl;
     }
@@ -581,41 +649,75 @@ int main(int argc, char** argv)
         }
     }
 */
+    size_t __N = 40;
+    main_mtx.start_mtx.clear();
+    main_mtx.mtx_double.clear();
+    main_mtx.start_mtx.reserve(__N);
+    main_mtx.mtx_double.reserve(__N);
+    for(size_t i {0}; i < __N; ++i)
+    {
+        main_mtx.start_mtx.emplace_back();
+        main_mtx.start_mtx.back().reserve(__N);
+        main_mtx.mtx_double.emplace_back();
+        main_mtx.mtx_double.back().reserve(__N);
+        for(size_t j {0}; j < __N; ++j)
+        {
+            main_mtx.start_mtx.back().emplace_back(::std::exp(-0.05 * ::std::pow(abs(i - j), 2)));
+        }
+    }
+    
     ::std::cout << "Start mtx:" << ::std::endl;
     main_mtx.printStartMtx();
     main_mtx.CholezkyMetod();
     ::std::cout << "--------" << ::std::endl;
-    main_mtx.printDoubleMtx();
-    ::std::cout << "--------" << ::std::endl;
     ::std::vector<::std::vector<double>> dm2;
-    dm2.reserve(3ull);
-    main_mtx.double_T();
+    dm2.reserve(main_mtx.mtx_double.size());
     main_mtx.printDoubleMtx();
-    for(size_t i {0}; i < 3; ++i)
+    main_mtx.double_T();
+    for(size_t i {0}; i < main_mtx.mtx_double.size(); ++i)
     {
         dm2.emplace_back();
-        dm2.back().reserve(3ull);
-        for(size_t j {0}; j < 3; ++j)
+        dm2.back().reserve(main_mtx.mtx_double.size());
+        for(size_t j {0}; j < main_mtx.mtx_double.size(); ++j)
         {
             dm2.back().emplace_back(main_mtx.mtx_double[i][j]);
         }
     }
     main_mtx.double_T();
-    /*::std::cout << "--------RES--------" << ::std::endl;
-    auto resmmm2 = ::Matrix::MultMtxOnMtx(main_mtx.mtx_double, dm2);
-    for(size_t i {0}; i < 3; ++i)
+    ::std::cout << "--------" << ::std::endl;
+    ::std::cout << "DM2:" << ::std::endl;
+    for(size_t i {0}; i < main_mtx.mtx_double.size(); ++i)
     {
-        for(size_t j {0}; j < 3; ++j)
+        for(size_t j {0}; j < main_mtx.mtx_double.size(); ++j)
         {
-            ::std::cout << ::std::setw(10) << resmmm2[i][j] << ' ';
+            ::std::cout << ::std::setw(12) << dm2[i][j] << ' ';
         }
         ::std::cout << ::std::endl;
-    }*/
-    ::std::cout << "Mtx:" << ::std::endl;
+    }
+
+    ::std::cout << "--------RES--------" << ::std::endl;
+    ::std::vector<::std::vector<double>> resmmm2 = main_mtx.MultMtxOnMtx(dm2);
+    for(size_t i {0}; i < main_mtx.mtx_double.size(); ++i)
+    {
+        for(size_t j {0}; j < main_mtx.mtx_double.size(); ++j)
+        {
+            ::std::cout << ::std::setw(12) << resmmm2[i][j] - main_mtx.start_mtx[i][j] << ' ';
+        }
+        ::std::cout << ::std::endl;
+    }
+    /*for(size_t i {0}; i < main_mtx.mtx_double.size(); ++i)
+    {
+        dm2[i].emplace_back(main_mtx.mtx[i][main_mtx.size]);
+    }
+    main_mtx.__GaussForwardReverse(dm2);
+    main_mtx.__GaussBackward(dm2);
+    ::std::cout << "\nResults:" << ::std::endl;
+    main_mtx.printDoubleRes();
+    ::std::cout << "\nMtx:" << ::std::endl;
     main_mtx.printMtx();
     main_mtx.MethodProgonki();
     ::std::cout << "\nResults:" << ::std::endl;
-    main_mtx.printRes();
+    main_mtx.printRes();*/
 
     return 0;
 }
