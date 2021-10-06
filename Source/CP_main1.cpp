@@ -154,25 +154,25 @@ public:
         completed = true;
     }
 
-    ::std::vector<::std::vector<double>> MultMtxOnMtx(::std::vector<::std::vector<double>>& v) noexcept(false)
+    ::std::vector<::std::vector<double>> MultMtxOnMtx(::std::vector<::std::vector<double>>& w, ::std::vector<::std::vector<double>>& v) noexcept(false)
     {
-        ER_IF(mtx_double.size() != v.size(), ::std::cout << "Ill-formed vector!" << ::std::endl;, return ::std::vector<::std::vector<double>>(); )
+        ER_IF(w.size() != v.size(), ::std::cout << "Ill-formed vector!" << ::std::endl;, return ::std::vector<::std::vector<double>>(); )
         ::std::vector<::std::vector<double>> func_result;
-        func_result.reserve(mtx_double.size());
-        for(size_t i {0}; i < mtx_double.size(); ++i)
+        func_result.reserve(w.size());
+        for(size_t i {0}; i < w.size(); ++i)
         {
             func_result.emplace_back(::std::vector<double>());
             func_result.back().reserve(v[0].size());
         }
         for(size_t k {0}; k < v[0].size(); ++k)
         {
-            for(size_t i {0}; i < mtx_double.size(); ++i)
+            for(size_t i {0}; i < w.size(); ++i)
             {
                 double temp_res_ = 0.;
                 size_t j = 0ull;
-                for(size_t j {0}; j < mtx_double.size(); ++j)
+                for(size_t j {0}; j < w.size(); ++j)
                 {
-                    temp_res_ += mtx_double[k][j] * v[j][i];
+                    temp_res_ += w[k][j] * v[j][i];
                 }
                 func_result[i].emplace_back(temp_res_);
             }
@@ -247,6 +247,39 @@ public:
                 }
             }
         }
+        return true;
+    }
+
+    template<typename T>
+    bool __GaussForward(::std::vector<::std::vector<T>>& v) noexcept(false)
+    {
+        ER_IFN(completed, ::std::cout << "Matrix is incompleted!" << ::std::endl;, return false; )
+        size_t idx_swapedline = 1ull;
+        for(size_t i {1}; i < size; ++i)
+        {
+            if (v[i - 1][i - 1] == 0.)
+            {
+                if (idx_swapedline >= size) idx_swapedline = i;
+                ::std::swap(v[idx_swapedline], v[i - 1]);
+                --i;
+                continue;
+            }
+
+            for(size_t k {i}; k < size; ++k)
+            {
+                double diff = 1. / v[i - 1][i - 1];
+                diff *= v[k][i - 1];
+                for(size_t j {0}; j < size + 1; ++j)
+                {
+                    if (diff)
+                    {
+                        v[k][j] -= v[i - 1][j] * diff;
+                    }
+                }
+            }
+        }
+        v[size - 1][size] /= v[size - 1][size - 1];
+        v[size - 1][size - 1] = 1.;
         return true;
     }
 
@@ -418,11 +451,11 @@ public:
     void CholezkyMetod()
     {
         mtx_double[0][0] = ::std::sqrt(start_mtx[0][0]);
-        for(size_t i {1}; i < start_mtx.size(); ++i)
+        for(size_t i {1}; i < size; ++i)
         {
             mtx_double[i][0] = start_mtx[i][0] / mtx_double[0][0];
         }
-        for(size_t i {1}; i < start_mtx.size(); ++i)
+        for(size_t i {1}; i < size; ++i)
         {
             double temp = start_mtx[i][i];
             for(size_t j {0}; j < i; ++j)
@@ -430,9 +463,9 @@ public:
                 temp -= ::std::pow(mtx_double[i][j], 2);
             }
             mtx_double[i][i] = ::std::sqrt(temp);
-            if (i != start_mtx.size() - 1)
+            if (i != size - 1)
             {
-                for(size_t j {i + 1}; j < start_mtx.size(); ++j)
+                for(size_t j {i + 1}; j < size; ++j)
                 {
                     temp = start_mtx[j][i];
                     for(size_t k {0}; k < i; ++k)
@@ -476,6 +509,25 @@ public:
         }
     }
 
+    void MethodRotation()
+    {
+        for (size_t k {0}; k < size; ++k) 
+        {
+            for (size_t i {k + 1}; i < size; ++i)               
+            {
+                double c = start_mtx[k][k] / ::std::sqrt(::std::pow(start_mtx[k][k], 2) + ::std::pow(start_mtx[i][k], 2));
+                double s = start_mtx[i][k] /::std::sqrt(::std::pow(start_mtx[k][k], 2) + ::std::pow(start_mtx[i][k], 2));
+                for (size_t j {0}; j < size; ++j)
+                {
+                    start_mtx[k][j] = c * start_mtx[k][j] + s * start_mtx[i][j];
+                    start_mtx[i][j] = -s * start_mtx[k][j] + c * start_mtx[i][j];
+                }
+                start_mtx[k][size] = c * start_mtx[k][size] + s * start_mtx[i][size];
+                start_mtx[i][size] =-s * start_mtx[k][size] + c * start_mtx[i][size];
+            }
+        }
+    }
+
     // true = 1
     // false = 0
     // error = -1
@@ -506,9 +558,9 @@ public:
     void printStartMtx() noexcept(false)
     {
         ER_IFN(completed, ::std::cout << "Matrix is incompleted!" << ::std::endl;, return; )
-        for(size_t i = 0ull; i < start_mtx.size(); ++i)
+        for(size_t i = 0ull; i < size; ++i)
         {
-            for(size_t j = 0ull; j < start_mtx.size(); ++j)
+            for(size_t j = 0ull; j < size + 1; ++j)
             {
                 ::std::cout << ::std::setw(12) << start_mtx[i][j] << ' ';
             }
@@ -649,7 +701,8 @@ int main(int argc, char** argv)
         }
     }
 */
-    size_t __N = 40;
+    size_t __N = 5;
+    main_mtx.size = __N;
     main_mtx.start_mtx.clear();
     main_mtx.mtx_double.clear();
     main_mtx.start_mtx.reserve(__N);
@@ -657,17 +710,39 @@ int main(int argc, char** argv)
     for(size_t i {0}; i < __N; ++i)
     {
         main_mtx.start_mtx.emplace_back();
-        main_mtx.start_mtx.back().reserve(__N);
+        main_mtx.start_mtx.back().reserve(__N + 1);
         main_mtx.mtx_double.emplace_back();
         main_mtx.mtx_double.back().reserve(__N);
         for(size_t j {0}; j < __N; ++j)
         {
             main_mtx.start_mtx.back().emplace_back(::std::exp(-0.05 * ::std::pow(abs(i - j), 2)));
         }
+        main_mtx.start_mtx.back().emplace_back(i);
     }
     
     ::std::cout << "Start mtx:" << ::std::endl;
     main_mtx.printStartMtx();
+
+    //main_mtx.MethodRotation();
+    ::std::cout << ::std::endl;
+    main_mtx.printStartMtx();
+    main_mtx.__GaussForward(main_mtx.start_mtx);
+    main_mtx.__GaussBackward(main_mtx.start_mtx);
+    ::std::cout << ::std::endl;
+    main_mtx.printStartMtx();
+    main_mtx.printDoubleRes();
+
+    for(size_t i {0}; i < main_mtx.size; ++i)
+    {
+        double res_temp = 0.;
+        for(size_t j {0}; j < main_mtx.size; ++j)
+        {
+            res_temp += main_mtx.start_mtx[i][j] * main_mtx.res_double[j];
+        }
+        ::std::cout << res_temp << ' ';
+    }
+    ::std::cout << ::std::endl;
+    
     main_mtx.CholezkyMetod();
     ::std::cout << "--------" << ::std::endl;
     ::std::vector<::std::vector<double>> dm2;
@@ -696,12 +771,14 @@ int main(int argc, char** argv)
     }
 
     ::std::cout << "--------RES--------" << ::std::endl;
-    ::std::vector<::std::vector<double>> resmmm2 = main_mtx.MultMtxOnMtx(dm2);
+    ::std::vector<::std::vector<double>> resmmm2 = main_mtx.MultMtxOnMtx(main_mtx.mtx_double, dm2);
     for(size_t i {0}; i < main_mtx.mtx_double.size(); ++i)
     {
         for(size_t j {0}; j < main_mtx.mtx_double.size(); ++j)
         {
-            ::std::cout << ::std::setw(12) << resmmm2[i][j] - main_mtx.start_mtx[i][j] << ' ';
+            double temp_res_delt = resmmm2[i][j] - main_mtx.start_mtx[i][j];
+            if (temp_res_delt < 1e-10) temp_res_delt = 0.;
+            ::std::cout << ::std::setw(12) << temp_res_delt << ' ';
         }
         ::std::cout << ::std::endl;
     }
