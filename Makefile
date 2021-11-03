@@ -13,6 +13,10 @@ ifeq ($(OS), Windows_NT)
 	EXE_CP1 = ./Release/CP1.exe
 	EXE_main1d = ./Debug/main1.exe
 	EXE_main1 = ./Release/main1.exe
+	EXE_main2d = ./Debug/main2.exe
+	EXE_main2 = ./Release/main2.exe
+	EXE_main3d = ./Debug/main3.exe
+	EXE_main3 = ./Release/main3.exe
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S), Linux)
@@ -23,6 +27,10 @@ else
 		EXE_CP1 = ./Release/CP1
 		EXE_main1d = ./Debug/main1
 		EXE_main1 = ./Release/main1
+		EXE_main2d = ./Debug/main2
+		EXE_main2 = ./Release/main2
+		EXE_main3d = ./Debug/main3
+		EXE_main3 = ./Release/main3
     endif
 endif
 
@@ -31,6 +39,10 @@ CP1d: ./Source/CP_main1.cpp $(EXE_CP1d)
 CP1: ./Source/CP_main1.cpp $(EXE_CP1)
 main1d: ./Source/main1.cpp $(EXE_main1d)
 main1: ./Source/main1.cpp $(EXE_main1)
+main2d: ./Source/main2.cpp $(EXE_main2d)
+main2: ./Source/main2.cpp $(EXE_main2)
+main3d: ./Source/main3.cpp $(EXE_main3d)
+main3: ./Source/main3.cpp $(EXE_main3)
 
 ./Source/fraction.o: ./Source/fraction.cpp ./Source/fraction.h
 	$(info processing....)
@@ -43,6 +55,14 @@ main1: ./Source/main1.cpp $(EXE_main1)
 ./Source/main1.o: ./Source/main1.cpp
 	$(info processing....)
 	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/main2.o: ./Source/main2.cpp
+	$(info processing....)
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/main3.o: ./Source/main3.cpp
+	$(info processing....)
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
 
 ./Source/fraction.d.o: ./Source/fraction.cpp ./Source/fraction.h
 	$(info processing....)
@@ -53,6 +73,14 @@ main1: ./Source/main1.cpp $(EXE_main1)
 	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
 ./Source/main1.d.o: ./Source/main1.cpp
+	$(info processing....)
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/main2.d.o: ./Source/main2.cpp
+	$(info processing....)
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/main3.d.o: ./Source/main3.cpp
 	$(info processing....)
 	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
@@ -69,6 +97,22 @@ $(EXE_main1d): ./Source/main1.d.o
 	$(CXX) $(LDFLAGS) $^ -o $@
 
 $(EXE_main1): ./Source/main1.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+	
+$(EXE_main2d): ./Source/main2.d.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(EXE_main2): ./Source/main2.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+	
+$(EXE_main3d): ./Source/main3.d.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(EXE_main3): ./Source/main3.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
