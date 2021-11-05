@@ -70,9 +70,9 @@ private:
     void __add_str(const char* _str) noexcept(false)
     {
         size_t* __temp_idx = new size_t[szElem + ::std::char_traits<char>::length(_str)];    // szElem + N >= than enough
-		if (szElem) ::std::memcpy(__temp_idx, __idx, szElem * sizeof(size_t));
-		delete[] __idx;
-		__idx = __temp_idx;
+        if (szElem) ::std::memcpy(__temp_idx, __idx, szElem * sizeof(size_t));
+        delete[] __idx;
+        __idx = __temp_idx;
         size_t i = 0ull;
         size_t _lenght = 0ull;
         while(_str[i])
@@ -113,7 +113,7 @@ private:
             }
         }
         szElem += _lenght;
-		szByte += i;
+	    szByte += i;
     }
 
     void __shrink_to_size()
@@ -127,14 +127,10 @@ private:
         str = temp;
     }
 
-    template<typename SZ1, typename SZ2>
-    ::std::enable_if_t<::std::conjunction_v<
-        ::std::is_integral<::std::decay_t<SZ1>>, ::std::is_unsigned<::std::decay_t<SZ1>>,
-        ::std::is_integral<::std::decay_t<SZ2>>, ::std::is_unsigned<::std::decay_t<SZ2>>>, void>
-    __init(SZ1&& _szelem, SZ2&& _szbyte) noexcept(false)
+    void __init(size_t _szelem, size_t _szbyte) noexcept(false)
     {
-        szElem = ::std::forward<decltype(_szelem)>(_szelem);
-        szByte = ::std::forward<decltype(_szbyte)>(_szbyte);
+        szElem = _szelem;
+        szByte = _szbyte;
         str = new char[szByte + 1];
         __idx = new size_t[szElem];
     }
@@ -197,7 +193,7 @@ public:
             delete[] __idx;
             delete[] str;
         }
-		this->__add_str(astr);
+	    this->__add_str(astr);
         str = new char[szByte + 1];
         str = ::std::char_traits<char>::copy(str, astr, szByte + 1);
         return *this;
