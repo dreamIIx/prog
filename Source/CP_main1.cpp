@@ -701,7 +701,7 @@ int main(int argc, char** argv)
         }
     }
 */
-    size_t __N = 5;
+    size_t __N = 35;
     main_mtx.size = __N;
     main_mtx.start_mtx.clear();
     main_mtx.mtx_double.clear();
@@ -722,7 +722,7 @@ int main(int argc, char** argv)
     
     ::std::cout << "Start mtx:" << ::std::endl;
     main_mtx.printStartMtx();
-
+/*
     //main_mtx.MethodRotation();
     ::std::cout << ::std::endl;
     main_mtx.printStartMtx();
@@ -742,7 +742,7 @@ int main(int argc, char** argv)
         ::std::cout << res_temp << ' ';
     }
     ::std::cout << ::std::endl;
-    
+*/
     main_mtx.CholezkyMetod();
     ::std::cout << "--------" << ::std::endl;
     ::std::vector<::std::vector<double>> dm2;
