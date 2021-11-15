@@ -6,6 +6,7 @@
 #include <exception>
 #include <cmath>
 #include <cstring>
+#include <utility>
 
 #if !defined(defDX_S)
 #define defDX_S(x)		#x
@@ -49,32 +50,33 @@
 #define SETBITS(x,y,pos)	( (x) |= ( y << (pos) ) )
 #define UNSETBITS(x,y,pos)	( (x) &= (~( y << (pos) ) ) )
 
-#define KF_BIG_DATA 4095
-#define _dxBUF_SIZE_INPUT_STREAM 4096
-#define __KF (static_cast<double>(0.60))
+#define KF_BIG_DATA                 4095
+#define _dxBUF_SIZE_INPUT_STREAM    4096
+#define __KF                        (static_cast<double>(0.6))
+#define __DEFAULT_CAPACITY          (static_cast<size_t>(5ull))
 
 const char* find_substr(const char* src, const char* substr);
 
 template<typename K, typename V>
-struct Pair
+struct HashElem
 {
     bool exist;
     K first;
     V second;
 
-    Pair() noexcept(true) : exist(false), first(), second() {}
+    HashElem() noexcept(true) : exist(false), first(), second() {}
 
-    Pair(const Pair<K, V>& inst) noexcept(true)
+    HashElem(const HashElem<K, V>& inst) noexcept(true)
     {
         *this = inst;
     }
 
-    Pair(Pair<K, V>&& inst) noexcept(true)
+    HashElem(HashElem<K, V>&& inst) noexcept(true)
     {
         *this = ::std::move(inst);
     }
 
-    Pair<K, V>& operator=(const Pair<K, V>& inst) noexcept(true)
+    HashElem<K, V>& operator=(const HashElem<K, V>& inst) noexcept(true)
     {
         exist = inst.exist;
         first = inst.first;
@@ -82,7 +84,7 @@ struct Pair
         return *this;
     }
 
-    Pair<K, V>& operator=(Pair<K, V>&& inst) noexcept(true)
+    HashElem<K, V>& operator=(HashElem<K, V>&& inst) noexcept(true)
     {
         exist = ::std::move(inst.exist);
         first = ::std::move(inst.first);
@@ -92,15 +94,12 @@ struct Pair
 
     template<typename _K, typename _V, typename _I = ::std::enable_if_t<::std::conjunction<
         ::std::is_same<K, _K>, ::std::is_same<V, _V>/*, ::std::is_move_constructible<K>, ::std::is_move_constructible<V>*/>::value, void>>
-    Pair(_K&& akey, _V&& avalue) noexcept(true) : exist(true), first(::std::forward<K>(akey)), second(::std::forward<V>(avalue)) {}
+    HashElem(_K&& akey, _V&& avalue) noexcept(true) : exist(true), first(::std::forward<K>(akey)), second(::std::forward<V>(avalue)) {}
 
     template<typename _K, typename _V, typename _I = ::std::enable_if_t<::std::conjunction<
         ::std::is_same<K, _K>, ::std::is_same<V, _V>/*, ::std::is_copy_constructible<K>, ::std::is_copy_constructible<V>*/>::value, void>>
-    Pair(const _K& akey, const _V& avalue) noexcept(true) : exist(true), first(akey), second(avalue) {}
+    HashElem(const _K& akey, const _V& avalue) noexcept(true) : exist(true), first(akey), second(avalue) {}
 };
-
-template<typename K, typename V>
-class MultiHashMap;
 
 template<typename __K, typename __V,
     typename I = ::std::enable_if_t<::std::conjunction<::std::is_default_constructible<__K>, ::std::is_default_constructible<__V>>::value, void>>
@@ -108,11 +107,12 @@ class HashMap
 {
     using K = ::std::decay_t<__K>;
     using V = ::std::decay_t<__V>;
-    friend class MultiHashMap<K, V>;
 
+protected:
     size_t _size;
     size_t _capacity;
-    Pair<K, V>* map;
+    mutable double KF_OVERFLOW;
+    HashElem<K, V>* map;
     ::std::hash<K> _prov_hash;
 
 public:
@@ -120,11 +120,11 @@ public:
     {
     public:
         size_t _cap;
-        Pair<K, V>* ptr;
+        HashElem<K, V>* ptr;
 
         _Iterator() noexcept(true) : _cap(0ull), ptr(nullptr) {}
 
-        _Iterator(size_t acap, Pair<K, V>* aptr) noexcept(true) : _cap(acap), ptr(aptr)
+        _Iterator(size_t acap, HashElem<K, V>* aptr) noexcept(true) : _cap(acap), ptr(aptr)
         {
             while(_cap > 0 ? !((ptr)->exist) : !!(ptr = nullptr))
             {
@@ -143,7 +143,7 @@ public:
         {
             if (ptr == nullptr) return _Iterator();
             size_t temp_cap = _cap;
-            Pair<K, V>* temp_ptr = ptr;
+            HashElem<K, V>* temp_ptr = ptr;
             for(size_t i {0}; i < n; ++i)
             {
                 while(--temp_cap > 0 ? !((++temp_ptr)->exist) : !!(temp_ptr = nullptr)) {}
@@ -162,19 +162,19 @@ public:
             return (ptr != inst.ptr);
         }
 
-        operator Pair<K, V>*() const noexcept(true)
+        operator HashElem<K, V>*() const noexcept(true)
         {
             return ptr;
         }
 
-        Pair<K, V>* operator->()
+        HashElem<K, V>* operator->()
         {
             return ptr;
         }
     };
 
-    HashMap() = delete; // _capacity = 0 not allowed
-    HashMap(size_t acapacity) noexcept(false) : _size(0ull), _capacity(acapacity), map(new Pair<K, V>[acapacity]) {}
+    HashMap() : _size(0ull), _capacity(__DEFAULT_CAPACITY), KF_OVERFLOW(__KF), map(new HashElem<K, V>[__DEFAULT_CAPACITY]()) {}
+    HashMap(size_t acapacity, double kf_overflow = __KF) noexcept(false) : _size(0ull), _capacity(acapacity), KF_OVERFLOW(kf_overflow), map(new HashElem<K, V>[acapacity]()) {}
 
     ~HashMap() noexcept(false)
     {
@@ -185,27 +185,38 @@ public:
     
     V& operator[](const K& key) noexcept(false)
     {
-        return _find(key).second;
+        auto res = _find(key);
+        if (res.second)  return res.first.second;
+        else return insert(key, V()).second;
     }
 
     template<typename _K, typename _V,
         typename _I = ::std::enable_if_t<::std::conjunction<::std::is_same<K, ::std::decay_t<_K>>, ::std::is_same<V, ::std::decay_t<_V>>>::value, void>>
-    Pair<K, V>& insert(_K&& key, _V&& value) noexcept(false)
+    HashElem<K, V>& insert(_K&& key, _V&& value, int _type = 0) noexcept(false)
     {
-        ER_IF(!_capacity,, throw ::std::length_error("[EXC] HashMap capacity is null!"); )
+        if (!_capacity)
+        {
+            _capacity = __DEFAULT_CAPACITY;
+            map = new HashElem<K, V>[_capacity]();
+        }
         auto _calced_hash = _hash(key);
         bool placed = false;
-        for(; _calced_hash < _capacity; ++_calced_hash)
+        size_t i = _calced_hash;
+        do
         {
-            if (map[_calced_hash].exist && map[_calced_hash].first != key) continue;
+            if (map[i].exist && (_type || map[i].first != key))
+            {
+                if (++i >= _capacity) i = 0ull;
+                continue;
+            }
             else
             {
-                if (!map[_calced_hash].exist) ++_size;
-                map[_calced_hash] = Pair<K, V>(::std::forward<_K>(key), ::std::forward<_V>(value));
+                if (_type || !map[i].exist) ++_size;
+                map[i] = HashElem<K, V>(::std::forward<_K>(key), ::std::forward<_V>(value));
                 placed = true;
                 break;
             }
-        }
+        } while(i != _calced_hash);
         resize();
         if (!placed)    return insert(::std::forward<_K>(key), ::std::forward<_V>(value));
         return map[_calced_hash];
@@ -213,24 +224,22 @@ public:
 
     void erase(const K& key) noexcept(false)
     {
-        try
+        auto res = _find(key);
+        if (res.second) 
         {
-            _find(key).exist = false;
+            res.first.exist = false;
             --_size;
         }
-        catch(const std::exception& e)
-        {
-            std::cerr << e.what() << '\n';
-        }
+        else std::cerr << "[ATTENTION] a pair with the required key is not exist!" << ::std::endl;
     }
 
-    void resize() noexcept(false)
+    void resize(int _type = 0) noexcept(false)
     {
-        if (_size >= _capacity * __KF)
+        if (_size >= _capacity * KF_OVERFLOW)
         {
             size_t oldcap = _capacity;
             _capacity *= 2ull;
-            Pair<K, V>* temp = new Pair<K, V>[_capacity];
+            HashElem<K, V>* temp = new HashElem<K, V>[_capacity];
             ::std::swap(map, temp);
             for(size_t i {0}; i < oldcap; ++i)
             {
@@ -239,10 +248,20 @@ public:
             _size = 0ull;
             for(size_t i {0}; i < oldcap; ++i)
             {
-                if (temp[i].exist)  insert(static_cast<K>(temp[i].first), static_cast<V>(temp[i].second));
+                if (temp[i].exist)  insert(static_cast<K>(temp[i].first), static_cast<V>(temp[i].second), _type);
             }
             delete[] temp;
         }
+    }
+
+    double getKF() const noexcept(true)
+    {
+        return KF_OVERFLOW;
+    }
+
+    void setKF(double kf) noexcept(true)
+    {
+        KF_OVERFLOW = kf;
     }
 
     size_t size() const noexcept(true)
@@ -265,16 +284,21 @@ public:
         return _Iterator();
     }
     
-private:
-    Pair<K, V>& _find(const K& key) noexcept(/*::std::equality_comparable<K>*/false)
+protected:
+    ::std::pair<HashElem<K, V>&, bool> _find(const K& key) noexcept(false)
     {
         auto _calced_hash = _hash(key);
-        for(; _calced_hash < _capacity; ++_calced_hash)
+        size_t i = _calced_hash;
+        do
         {
-            if (!map[_calced_hash].exist || map[_calced_hash].first != key) continue;
-            return map[_calced_hash];
-        }
-        throw ::std::runtime_error("[EXC] a pair with the required key is not exist!");
+            if (!map[_calced_hash].exist || map[_calced_hash].first != key) 
+            {
+                if (++i >= _capacity) i = 0ull;
+                continue;
+            }
+            return { map[_calced_hash], true };
+        } while(i != _calced_hash);
+        return { map[0], false };
     }
 
     size_t _hash(const K& key) const noexcept(true)
@@ -383,112 +407,54 @@ public:
     size_t capacity() const noexcept(true);
 };
 
-template<typename K, typename V>
-class MultiHashMap
+template<typename __K, typename __V>
+class MultiHashMap : public HashMap<__K, __V>
 {
-    using _Iterator = typename HashMap<K, V>::_Iterator;
-    HashMap<K, V> map;
+    using K = ::std::decay_t<__K>;
+    using V = ::std::decay_t<__V>;
+
 public:
-    MultiHashMap() = delete; // _capacity = 0 not allowed
-    MultiHashMap(size_t acapacity) noexcept(false) : map(acapacity) {}
+    using _Iterator = typename HashMap<K, V>::_Iterator;
+
+    MultiHashMap() : HashMap<K, V>() {}
+    MultiHashMap(size_t acapacity, double kf_overflow = __KF) noexcept(false) : HashMap<K, V>(acapacity, kf_overflow) {}
 
     template<typename _K, typename _V,
         typename _I = ::std::enable_if_t<::std::conjunction<::std::is_same<K, ::std::decay_t<_K>>, ::std::is_same<V, ::std::decay_t<_V>>>::value, void>>
-    Pair<K, V>& insert(_K&& key, _V&& value) noexcept(false)
+    inline HashElem<K, V>& insert(_K&& key, _V&& value) noexcept(false)
     {
-        ER_IF(!map._capacity,, throw ::std::length_error("[EXC] HashMap capacity is null!"); )
-        auto _calced_hash = map._hash(key);
-        bool placed = false;
-        for(; _calced_hash < map._capacity; ++_calced_hash)
-        {
-            if (map.map[_calced_hash].exist) continue;
-            else
-            {
-                ++map._size;
-                map.map[_calced_hash] = Pair<K, V>(::std::forward<_K>(key), ::std::forward<_V>(value));
-                placed = true;
-                break;
-            }
-        }
-        resize();
-        if (!placed)    return insert(::std::forward<_K>(key), ::std::forward<_V>(value));
-        return map.map[_calced_hash];
-    }
-
-    V& operator[](const K& key) noexcept(false)
-    {
-        return map._find(key).second;
+        return this->insert(::std::forward(key), ::std::forward(value), 1);
     }
 
     void erase(const K& key) noexcept(false)
     {
-        bool found = false;
-        try
+        while(true)
         {
-            while(true)
+            auto res = _find(key);
+            if (res.second)
             {
-                map._find(key).exist = false;
-                --map._size;
-                found = true;
+                res.first.exist = false;
+                --this->_size;
             }
-        }
-        catch(const std::exception& e)
-        {
-            if (!found) std::cerr << e.what() << '\n';
+            else break;
         }
     }
 
     void resize() noexcept(false)
     {
-        if (map._size >= map._capacity * __KF)
+        this->resize(1);
+    }
+
+    Array<HashElem<K, V>> getElemsByKey(K key)
+    {
+        Array<HashElem<K, V>> res;
+        res.reserve(this->_size);
+        auto _calced_hash = _hash(key);
+        for(; _calced_hash < this->_capacity; ++_calced_hash)
         {
-            size_t oldcap = map._capacity;
-            map._capacity *= 2ull;
-            Pair<K, V>* temp = new Pair<K, V>[map._capacity];
-            ::std::swap(map.map, temp);
-            for(size_t i {0}; i < oldcap; ++i)
+            if (this->map[_calced_hash].exist && this->map[_calced_hash].first == key)
             {
-                if (map.map[i].exist)  temp[i] = map.map[i];
-            }
-            map._size = 0ull;
-            for(size_t i {0}; i < oldcap; ++i)
-            {
-                if (temp[i].exist)  insert(static_cast<K>(temp[i].first), static_cast<V>(temp[i].second));
-            }
-            delete[] temp;
-        }
-    }
-
-    inline size_t size() const noexcept(true)
-    {
-        return map.size();
-    }
-
-    inline void clear() noexcept(false)
-    {
-        map.~HashMap();
-    }
-
-    inline _Iterator begin() const noexcept(true)
-    {
-        return _Iterator(map._capacity, map.map);
-    }
-
-    inline _Iterator end() const noexcept(true)
-    {
-        return _Iterator();
-    }
-
-    Array<Pair<K, V>> getElemsByKey(K key)
-    {
-        Array<Pair<K, V>> res;
-        res.reserve(map._size);
-        auto _calced_hash = map._hash(key);
-        for(; _calced_hash < map._capacity; ++_calced_hash)
-        {
-            if (map.map[_calced_hash].exist && map.map[_calced_hash].first == key)
-            {
-                res.emplace_back(map.map[_calced_hash]);
+                res.emplace_back(this->map[_calced_hash]);
             }
         }
         res.shrink_to_size();
@@ -498,10 +464,10 @@ public:
     size_t countElemByKey(K key)
     {
         size_t res = 0ull;
-        auto _calced_hash = map._hash(key);
-        for(; _calced_hash < map._capacity; ++_calced_hash)
+        auto _calced_hash = _hash(key);
+        for(; _calced_hash < this->_capacity; ++_calced_hash)
         {
-            if (map.map[_calced_hash].exist && map.map[_calced_hash].first == key) ++res;
+            if (this->map[_calced_hash].exist && this->map[_calced_hash].first == key) ++res;
         }
         return res;
     }
@@ -732,7 +698,7 @@ int main()
     read >> s1;
     read >> s2;
     ER_IFN(read.is_open(), ::std::cerr << "[ERR] cannot open the file!" << ::std::endl;, return 1; )
-    mA(read, s1, s2, 10);
+    mA(read, s1, s2, 1);
 
     return 0;
 }
