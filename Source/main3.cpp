@@ -116,6 +116,12 @@ protected:
     ::std::hash<K> _prov_hash;
 
 public:
+    enum class _type : unsigned
+    {
+        base = 0u,
+        multi = 1u
+    };
+
     class _Iterator
     {
     public:
@@ -186,32 +192,32 @@ public:
     V& operator[](const K& key) noexcept(false)
     {
         auto res = _find(key);
-        if (res.second)  return res.first.second;
+        if (res.second) return res.first->second;
         else return insert(key, V()).second;
     }
 
     template<typename _K, typename _V,
         typename _I = ::std::enable_if_t<::std::conjunction<::std::is_same<K, ::std::decay_t<_K>>, ::std::is_same<V, ::std::decay_t<_V>>>::value, void>>
-    HashElem<K, V>& insert(_K&& key, _V&& value, int _type = 0) noexcept(false)
+    HashElem<K, V>& insert(_K&& key, _V&& value, _type type = _type::base) noexcept(false)
     {
         if (!_capacity)
         {
             _capacity = __DEFAULT_CAPACITY;
             map = new HashElem<K, V>[_capacity]();
         }
-        auto _calced_hash = _hash(key);
+        size_t _calced_hash = _hash(key);
         bool placed = false;
         size_t i = _calced_hash;
         do
         {
-            if (map[i].exist && (_type || map[i].first != key))
+            if (map[i].exist && (type != _type::base || map[i].first != key))
             {
                 if (++i >= _capacity) i = 0ull;
                 continue;
             }
             else
             {
-                if (_type || !map[i].exist) ++_size;
+                if (type != _type::base || !map[i].exist) ++_size;
                 map[i] = HashElem<K, V>(::std::forward<_K>(key), ::std::forward<_V>(value));
                 placed = true;
                 break;
@@ -227,13 +233,13 @@ public:
         auto res = _find(key);
         if (res.second) 
         {
-            res.first.exist = false;
+            res.first->exist = false;
             --_size;
         }
         else std::cerr << "[ATTENTION] a pair with the required key is not exist!" << ::std::endl;
     }
 
-    void resize(int _type = 0) noexcept(false)
+    void resize(_type type = _type::base) noexcept(false)
     {
         if (_size >= _capacity * KF_OVERFLOW)
         {
@@ -248,7 +254,7 @@ public:
             _size = 0ull;
             for(size_t i {0}; i < oldcap; ++i)
             {
-                if (temp[i].exist)  insert(static_cast<K>(temp[i].first), static_cast<V>(temp[i].second), _type);
+                if (temp[i].exist)  insert(static_cast<K>(temp[i].first), static_cast<V>(temp[i].second), type);
             }
             delete[] temp;
         }
@@ -285,20 +291,20 @@ public:
     }
     
 protected:
-    ::std::pair<HashElem<K, V>&, bool> _find(const K& key) noexcept(false)
+    ::std::pair<_Iterator, bool> _find(const K& key) noexcept(false)
     {
-        auto _calced_hash = _hash(key);
+        size_t _calced_hash = _hash(key);
         size_t i = _calced_hash;
         do
         {
-            if (!map[_calced_hash].exist || map[_calced_hash].first != key) 
+            if (!map[i].exist || map[i].first != key) 
             {
                 if (++i >= _capacity) i = 0ull;
                 continue;
             }
-            return { map[_calced_hash], true };
+            return { _Iterator(_capacity - i, map + i), true };
         } while(i != _calced_hash);
-        return { map[0], false };
+        return { _Iterator(_capacity, map), false };
     }
 
     size_t _hash(const K& key) const noexcept(true)
@@ -433,7 +439,7 @@ public:
             auto res = _find(key);
             if (res.second)
             {
-                res.first.exist = false;
+                res.first->exist = false;
                 --this->_size;
             }
             else break;
@@ -449,7 +455,7 @@ public:
     {
         Array<HashElem<K, V>> res;
         res.reserve(this->_size);
-        auto _calced_hash = _hash(key);
+        size_t _calced_hash = _hash(key);
         for(; _calced_hash < this->_capacity; ++_calced_hash)
         {
             if (this->map[_calced_hash].exist && this->map[_calced_hash].first == key)
@@ -464,7 +470,7 @@ public:
     size_t countElemByKey(K key)
     {
         size_t res = 0ull;
-        auto _calced_hash = _hash(key);
+        size_t _calced_hash = _hash(key);
         for(; _calced_hash < this->_capacity; ++_calced_hash)
         {
             if (this->map[_calced_hash].exist && this->map[_calced_hash].first == key) ++res;
@@ -698,7 +704,7 @@ int main()
     read >> s1;
     read >> s2;
     ER_IFN(read.is_open(), ::std::cerr << "[ERR] cannot open the file!" << ::std::endl;, return 1; )
-    mA(read, s1, s2, 1);
+    mA(read, s1, s2, 10);
 
     return 0;
 }
