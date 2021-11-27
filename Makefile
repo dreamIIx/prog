@@ -17,6 +17,8 @@ ifeq ($(OS), Windows_NT)
 	EXE_main2 = ./Release/main2.exe
 	EXE_main3d = ./Debug/main3.exe
 	EXE_main3 = ./Release/main3.exe
+	EXE_main4d = ./Debug/main4.exe
+	EXE_main4 = ./Release/main4.exe
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S), Linux)
@@ -31,6 +33,8 @@ else
 		EXE_main2 = ./Release/main2
 		EXE_main3d = ./Debug/main3
 		EXE_main3 = ./Release/main3
+		EXE_main4d = ./Debug/main4
+		EXE_main4 = ./Release/main4
     endif
 endif
 
@@ -43,6 +47,8 @@ main2d: ./Source/main2.cpp $(EXE_main2d)
 main2: ./Source/main2.cpp $(EXE_main2)
 main3d: ./Source/main3.cpp $(EXE_main3d)
 main3: ./Source/main3.cpp $(EXE_main3)
+main4d: ./Source/main4.cpp $(EXE_main4d)
+main4: ./Source/main4.cpp $(EXE_main4)
 
 ./Source/fraction.o: ./Source/fraction.cpp ./Source/fraction.h
 	$(info processing....)
@@ -63,6 +69,10 @@ main3: ./Source/main3.cpp $(EXE_main3)
 ./Source/main3.o: ./Source/main3.cpp
 	$(info processing....)
 	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/main4.o: ./Source/main4.cpp
+	$(info processing....)
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
 
 ./Source/fraction.d.o: ./Source/fraction.cpp ./Source/fraction.h
 	$(info processing....)
@@ -81,6 +91,10 @@ main3: ./Source/main3.cpp $(EXE_main3)
 	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
 ./Source/main3.d.o: ./Source/main3.cpp
+	$(info processing....)
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/main4.d.o: ./Source/main4.cpp
 	$(info processing....)
 	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
@@ -113,6 +127,14 @@ $(EXE_main3d): ./Source/main3.d.o
 	$(CXX) $(LDFLAGS) $^ -o $@
 
 $(EXE_main3): ./Source/main3.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+	
+$(EXE_main4d): ./Source/main4.d.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(EXE_main4): ./Source/main4.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
