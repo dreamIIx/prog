@@ -3,6 +3,7 @@
 #include <fstream>
 #include <string>
 #include <deque>
+#include <vector>
 #include <exception>
 #include <memory>
 #include <cctype>
@@ -45,8 +46,6 @@
 ::std::pair<::std::string, size_t> extract(const ::std::string& str, size_t offset = 0ull);
 template<typename T, typename I = ::std::enable_if_t<::std::is_fundamental_v<T>, void>>
 ::std::string nts(const T& example);
-
-class Interpreter;
 
 class Expression
 {
@@ -151,7 +150,7 @@ public:
         auto it = spEnv->rbegin();
         for(; it != spEnv->rend(); ++it)
         {
-            if (it->id == id) return it->expr;
+            if (it->id == id)   return it->expr;
         }
         throw ::std::runtime_error("not found!");
     }
@@ -331,6 +330,108 @@ public:
 
 };
 
+class Arr : public Expression
+{
+    friend class AtExpr;
+    ::std::vector<Expression*> arr;
+
+public:
+    Arr(::std::vector<Expression*>&& rrarr, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true)
+        : Expression(aspEnv), arr(::std::move(rrarr)) {}
+
+    Expression* eval() noexcept(false) override
+    {
+        ::std::vector<Expression*> temp;
+        for(auto& x : arr)
+        {
+            temp.reserve(temp.capacity() + 1);
+            temp.emplace_back(x->eval());
+        }
+        return new Arr(::std::move(temp));
+    }
+
+    ::std::string print() const noexcept(true) override
+    {
+        ::std::string res = "(arr ";
+        for(auto& x : arr)
+        {
+            res += " " + x->print();
+        }
+        res += ")";
+        return res;
+    }
+
+    ~Arr() noexcept(false)
+    {
+        for(auto& x : arr)
+        {
+            delete x;
+        }
+    }
+
+};
+
+class Generator : public Expression
+{
+    Expression* count;
+    Expression* functor;
+
+public:
+    Generator(Expression* acount, Expression* afoo, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true)
+        : Expression(aspEnv), count(acount), functor(afoo) {}
+
+    Expression* eval() noexcept(false) override
+    {
+        ::std::vector<Expression*> temp;
+        for(decltype(count->eval()->getValue()) i {0}; i < count->eval()->getValue(); ++i)
+        {
+            Expression* expr = (new Call(functor, new Value(i), spEnv))->eval();
+            temp.reserve(temp.capacity() + 1);
+            temp.emplace_back(expr);
+        }
+        return new Arr(::std::move(temp));
+    }
+
+    ::std::string print() const noexcept(true) override
+    {
+        return "(gen " + count->print() + " " + functor->print() + ")";
+    }
+
+    ~Generator() noexcept(false)
+    {
+        delete functor;
+        delete count;
+    }
+
+};
+class AtExpr : public Expression
+{
+    Expression* arr;
+    Expression* idx;
+
+public:
+    AtExpr(Expression* rrarr, Expression* aidx, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true)
+        : Expression(aspEnv), arr(rrarr), idx(aidx) {}
+
+    Expression* eval() noexcept(false) override
+    {
+        Expression* getArr = arr->eval();
+        return dynamic_cast<Arr*>(getArr)->arr[idx->eval()->getValue()]->eval(); // need to eval() result (???)
+    }
+
+    ::std::string print() const noexcept(true) override
+    {
+        return "(at " + arr->print() + " " + idx->print() + ")";
+    }
+
+    ~AtExpr() noexcept(false)
+    {
+        delete idx;
+        delete arr;
+    }
+
+};
+
 class Interpreter
 {
 public:
@@ -385,6 +486,9 @@ public:
         static ::std::string sadd = "add";
         static ::std::string svar = "var";
         static ::std::string sval = "val";
+        static ::std::string sarr = "arr";
+        static ::std::string sgen = "gen";
+        static ::std::string satexpr = "at";
         size_t _off = astr.find('(');
         if (_off != ::std::string::npos)
         {
@@ -398,11 +502,17 @@ public:
                 else if (::std::search(it, astr.end(), sadd.begin(), sadd.end()) == it) return add_construct(extract(astr), ptr);
                 else if (::std::search(it, astr.end(), svar.begin(), svar.end()) == it) return var_construct(extract(astr), ptr);
                 else if (::std::search(it, astr.end(), sval.begin(), sval.end()) == it) return val_construct(extract(astr), ptr);
+                else if (::std::search(it, astr.end(), sarr.begin(), sarr.end()) == it) return arr_construct(extract(astr), ptr);
+                else if (::std::search(it, astr.end(), sgen.begin(), sgen.end()) == it) return gen_construct(extract(astr), ptr);
+                else if (::std::search(it, astr.end(), satexpr.begin(), satexpr.end()) == it) return atexpr_construct(extract(astr), ptr);
             }
         }
         return nullptr;
     }
 
+    ///
+    // due to for not to dive into recursion, I have not written same-part function for those (to avoid unnecessary calls)
+    ///
     Expression* call_construct(::std::pair<::std::string, size_t> apair, ::std::shared_ptr<env_type> ptr) const noexcept(false)
     {
         auto fres = extract(apair.first, 1ull);
@@ -419,6 +529,27 @@ public:
         Expression* f = parse(fres.first, ptr);
         return new Function(id, f, ptr);
     }
+
+    Expression* gen_construct(::std::pair<::std::string, size_t> apair, ::std::shared_ptr<env_type> ptr) const noexcept(false)
+    {
+        auto fres = extract(apair.first, 1ull);
+        Expression* f = parse(fres.first, ptr);
+        fres = extract(apair.first, fres.second + 1);
+        Expression* s = parse(fres.first, ptr);
+        return new Generator(f, s, ptr);
+    }
+
+    Expression* atexpr_construct(::std::pair<::std::string, size_t> apair, ::std::shared_ptr<env_type> ptr) const noexcept(false)
+    {
+        auto fres = extract(apair.first, 1ull);
+        Expression* f = parse(fres.first, ptr);
+        fres = extract(apair.first, fres.second + 1);
+        Expression* s = parse(fres.first, ptr);
+        return new AtExpr(f, s, ptr);
+    }
+    ///
+    // end
+    ///
 
     // <id_type> requires to be convertible to ::std::string & have to has method size()
     Expression* let_construct(::std::pair<::std::string, size_t> apair, ::std::shared_ptr<env_type> ptr) const noexcept(false)
@@ -483,6 +614,28 @@ public:
             static_cast<int(*)(int)>(::std::isspace), [](int i) -> int { return i == '-' || ::std::isdigit(i); });
         integer val = ::std::atoi(str.c_str());
         return new Value(val, ptr);
+    }
+
+    // at least one expression must to be in <arr ...> expr
+    Expression* arr_construct(::std::pair<::std::string, size_t> apair, ::std::shared_ptr<env_type> ptr) const noexcept(false)
+    {
+        ::std::vector<Expression*> vpExpr;
+        auto fres = extract(apair.first, 1ull);
+        Expression* expr = parse(fres.first, ptr);
+        vpExpr.reserve(vpExpr.capacity() + 1);
+        vpExpr.emplace_back(expr);
+        try
+        {
+            while(true)
+            {
+                fres = extract(apair.first, fres.second + 1);
+                expr = parse(fres.first, ptr);
+                vpExpr.reserve(vpExpr.capacity() + 1);
+                vpExpr.emplace_back(expr);
+            }
+        }
+        catch(...) {}
+        return new Arr(::std::move(vpExpr), ptr);
     }
 
     id_type getID(::std::string astr,
