@@ -242,13 +242,7 @@ public:
         ER_IF(body == nullptr,, throw ::std::runtime_error("body is not initialized!"); )
         spEnv->push_back(env_pair(id, expr->eval()));
         Expression* res = body->eval();
-        auto it = spEnv->rbegin();
-        for(; it != spEnv->rend(); ++it)
-        {
-            if (it->id == id) break;
-        }
-        spEnv->erase(it.base(), spEnv->end());
-        //spEnv->erase(::std::find(spEnv->end(), spEnv->begin(), id), spEnv->end()); // on nsuts it is do not work (R)
+        spEnv->erase(::std::remove_if(spEnv->begin(), spEnv->end(), [this](env_pair& x){ return x.id == id; }), spEnv->end());
         return res;
     }
 
@@ -307,13 +301,8 @@ public:
     {
         spEnv->push_back(env_pair(dynamic_cast<Function*>(func_expr->eval())->id, arg_expr->eval()));
         Expression* res = dynamic_cast<Function*>(func_expr->eval())->callable_body->eval();
-        auto it = spEnv->rbegin();
-        for(; it != spEnv->rend(); ++it)
-        {
-            if (it->id == dynamic_cast<Function*>(func_expr->eval())->id) break;
-        }
-        spEnv->erase(it.base(), spEnv->end());
-        //spEnv->erase(::std::find(spEnv->begin(), spEnv->end(), dynamic_cast<Function*>(func_expr->eval())->id), spEnv->end()); // on nsuts it is do not work (R)
+        spEnv->erase(::std::remove_if(spEnv->begin(), spEnv->end(), [this](env_pair& x){ return x.id == dynamic_cast<Function*>(func_expr->eval())->id; }),
+            spEnv->end());
         return res;
     }
 
