@@ -242,7 +242,7 @@ public:
         ER_IF(body == nullptr,, throw ::std::runtime_error("body is not initialized!"); )
         spEnv->push_back(env_pair(id, expr->eval()));
         Expression* res = body->eval();
-        spEnv->erase(::std::remove_if(spEnv->begin(), spEnv->end(), [this](env_pair& x){ return x.id == id; }), spEnv->end());
+        spEnv->erase(::std::find_if(spEnv->begin(), spEnv->end(), [this](env_pair& x){ return x.id == id; }), spEnv->end());
         return res;
     }
 
@@ -301,7 +301,7 @@ public:
     {
         spEnv->push_back(env_pair(dynamic_cast<Function*>(func_expr->eval())->id, arg_expr->eval()));
         Expression* res = dynamic_cast<Function*>(func_expr->eval())->callable_body->eval();
-        spEnv->erase(::std::remove_if(spEnv->begin(), spEnv->end(), [this](env_pair& x){ return x.id == dynamic_cast<Function*>(func_expr->eval())->id; }),
+        spEnv->erase(::std::find_if(spEnv->begin(), spEnv->end(), [this](env_pair& x){ return x.id == dynamic_cast<Function*>(func_expr->eval())->id; }),
             spEnv->end());
         return res;
     }
