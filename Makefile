@@ -9,8 +9,8 @@ ifeq ($(OS), Windows_NT)
 	CFLAGS = -c -Wall -std=c++17
 	INCLUDE_DIR = 
 	LDFLAGS = 
-	EXE_CP1d = ./Debug/CP1.exe
-	EXE_CP1 = ./Release/CP1.exe
+	EXE_main4_2d = ./Debug/main4_2.exe
+	EXE_main4_2 = ./Release/main4_2.exe
 	EXE_main1d = ./Debug/main1.exe
 	EXE_main1 = ./Release/main1.exe
 	EXE_main2d = ./Debug/main2.exe
@@ -25,8 +25,8 @@ else
 		CFLAGS = -c -Wall -std=c++17
 		INCLUDE_DIR = 
 		LDFLAGS = 
-		EXE_CP1d = ./Debug/CP1
-		EXE_CP1 = ./Release/CP1
+		EXE_main4_2d = ./Debug/main4_2
+		EXE_main4_2 = ./Release/main4_2
 		EXE_main1d = ./Debug/main1
 		EXE_main1 = ./Release/main1
 		EXE_main2d = ./Debug/main2
@@ -39,8 +39,8 @@ else
 endif
 
 $(info init..)
-CP1d: ./Source/CP_main1.cpp $(EXE_CP1d)
-CP1: ./Source/CP_main1.cpp $(EXE_CP1)
+main4_2d: ./Source/main4_2.cpp $(EXE_main4_2d)
+main4_2: ./Source/main4_2.cpp $(EXE_main4_2)
 main1d: ./Source/main1.cpp $(EXE_main1d)
 main1: ./Source/main1.cpp $(EXE_main1)
 main2d: ./Source/main2.cpp $(EXE_main2d)
@@ -74,11 +74,7 @@ main4: ./Source/main4.cpp $(EXE_main4)
 	$(info processing....)
 	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
 
-./Source/fraction.d.o: ./Source/fraction.cpp ./Source/fraction.h
-	$(info processing....)
-	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/CP_main1.d.o: ./Source/CP_main1.cpp ./Source/fraction.cpp
+./Source/main4_2.d.o: ./Source/main4_2.cpp
 	$(info processing....)
 	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
@@ -98,11 +94,11 @@ main4: ./Source/main4.cpp $(EXE_main4)
 	$(info processing....)
 	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
-$(EXE_CP1d): ./Source/CP_main1.d.o ./Source/fraction.d.o
+$(EXE_main4_2d): ./Source/main4_2.d.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-$(EXE_CP1): ./Source/CP_main1.o ./Source/fraction.o
+$(EXE_main4_2): ./Source/main4_2.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 	
