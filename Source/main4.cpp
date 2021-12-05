@@ -302,8 +302,7 @@ public:
     Expression* eval(size_t _offset = 0ull) noexcept(false) override
     {
         spEnv->push_back(env_pair(dynamic_cast<Function*>(func_expr->eval(_offset))->id, arg_expr->eval(_offset)));
-        Expression* res = func_expr->eval(_offset);
-        res = dynamic_cast<Function*>(res)->callable_body->eval(-::std::distance(::std::find_if(spEnv->begin(), spEnv->end(),
+        Expression* res = dynamic_cast<Function*>(func_expr->eval(_offset))->callable_body->eval(-::std::distance(::std::find_if(spEnv->begin(), spEnv->end(),
                 [&res](env_pair& x) { return x.id == dynamic_cast<Function*>(res)->id; }), spEnv->begin()) - 2);
         spEnv->erase(::std::find_if(spEnv->begin(), spEnv->end(), [_offset, this](env_pair& x){ return x.id == dynamic_cast<Function*>(func_expr->eval(_offset))->id; }),
             spEnv->end());
