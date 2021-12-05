@@ -242,8 +242,9 @@ public:
     {
         ER_IF(body == nullptr,, throw ::std::runtime_error("body is not initialized!"); )
         spEnv->push_back(env_pair(id, expr->eval(_offset)));
-        Expression* res = body->eval(_offset);
-        spEnv->erase(::std::find_if(spEnv->begin(), spEnv->end(), [this](env_pair& x){ return x.id == id; }), spEnv->end());
+        Expression* res = body->eval(-::std::distance(::std::find_if(spEnv->rbegin(), spEnv->rend(),
+                [this](env_pair& x) { return x.id == id; }).base(), spEnv->begin()));
+        spEnv->erase(::std::find_if(spEnv->rbegin(), spEnv->rend(), [this](env_pair& x){ return x.id == id; }).base(), spEnv->end());
         return res;
     }
 
@@ -303,9 +304,9 @@ public:
     {
         spEnv->push_back(env_pair(dynamic_cast<Function*>(func_expr->eval(_offset))->id, arg_expr->eval(_offset)));
         Expression* res = func_expr->eval(_offset);
-        res = dynamic_cast<Function*>(res)->callable_body->eval(-::std::distance(::std::find_if(spEnv->begin(), spEnv->end(),
-                [&res](env_pair& x) { return x.id == dynamic_cast<Function*>(res)->id; }), spEnv->begin()) - 2);
-        spEnv->erase(::std::find_if(spEnv->begin(), spEnv->end(), [_offset, this](env_pair& x){ return x.id == dynamic_cast<Function*>(func_expr->eval(_offset))->id; }),
+        res = dynamic_cast<Function*>(res)->callable_body->eval(-::std::distance(::std::find_if(spEnv->rbegin(), spEnv->rend(),
+                [this, _offset](env_pair& x) { return x.expr == func_expr->eval(_offset); }).base(), spEnv->begin()) - 1);
+        spEnv->erase(::std::find_if(spEnv->rbegin(), spEnv->rend(), [_offset, this](env_pair& x){ return x.id == dynamic_cast<Function*>(func_expr->eval(_offset))->id; }).base(),
             spEnv->end());
         return res;
     }
@@ -378,8 +379,7 @@ public:
         ::std::vector<Expression*> temp;
         for(decltype(count->eval(_offset)->getValue()) i {0}; i < count->eval(_offset)->getValue(); ++i)
         {
-            Expression* expr = (new Call(functor, new Value(i), spEnv))->eval(-::std::distance(::std::find_if(spEnv->begin(), spEnv->end(),
-                [this](env_pair& x) { return x.id == dynamic_cast<Function*>(functor)->id; }), spEnv->begin()) - 2);
+            Expression* expr = (new Call(functor, new Value(i), spEnv))->eval(_offset);
             temp.reserve(temp.capacity() + 1);
             temp.emplace_back(expr);
         }
