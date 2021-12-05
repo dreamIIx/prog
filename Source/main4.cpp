@@ -86,10 +86,10 @@ public:
     Expression(Expression& instance) noexcept(true) : spEnv(instance.spEnv) {}
     Expression(Expression&& instance) noexcept(true) : spEnv(::std::move(instance.spEnv)) {}
 
-    virtual Expression* eval() = 0;
+    virtual Expression* eval(size_t _offset = 0ull) = 0;
     virtual ::std::string print() const noexcept(true) = 0;
 
-    virtual Expression* fromEnv() const noexcept(false)
+    virtual Expression* fromEnv(ptrdiff_t) const noexcept(false)
     {
         throw ::std::runtime_error("inappropriate expression");
         return nullptr;     // useless, but clear
@@ -112,7 +112,7 @@ class Value : public Expression
 public:
     Value(integer aval, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true) : Expression(aspEnv), val(aval) {}
 
-    Expression* eval() noexcept(false) override
+    Expression* eval(size_t) noexcept(false) override
     {
         return this;
     }
@@ -140,14 +140,15 @@ public:
     Variable(id_type& aid, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true) :
         Expression(aspEnv), id(aid) {}
 
-    Expression* eval() noexcept(false) override
+    Expression* eval(size_t _offset = 0ull) noexcept(false) override
     {
-        return this->fromEnv();
+        return this->fromEnv(static_cast<ptrdiff_t>(_offset));
     }
 
-    Expression* fromEnv() const noexcept(false) override
+    Expression* fromEnv(ptrdiff_t _offset) const noexcept(false) override
     {
-        auto it = spEnv->rbegin();
+        auto it = _offset ? spEnv->rend() : spEnv->rbegin();
+        while(_offset--)    --it;
         for(; it != spEnv->rend(); ++it)
         {
             if (it->id == id)   return it->expr;
@@ -173,9 +174,9 @@ public:
     Addition(Expression* af, Expression* as, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true) :
         Expression(aspEnv), first(af), second(as) {}
 
-    Expression* eval() noexcept(false) override
+    Expression* eval(size_t _offset = 0ull) noexcept(false) override
     {
-        return new Value(first->eval()->getValue() + second->eval()->getValue(), spEnv);
+        return new Value(first->eval(_offset)->getValue() + second->eval(_offset)->getValue(), spEnv);
     }
 
     ::std::string print() const noexcept(true) override
@@ -202,10 +203,10 @@ public:
     Condition(Expression* af, Expression* as, Expression* athen, Expression* aelse, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true) :
         Expression(aspEnv), first(af), second(as), then_cond(athen), else_cond(aelse) {}
 
-    Expression* eval() noexcept(false) override
+    Expression* eval(size_t _offset = 0ull) noexcept(false) override
     {
-        if (first->eval()->getValue() > second->eval()->getValue()) return then_cond->eval();
-        return else_cond->eval();
+        if (first->eval(_offset)->getValue() > second->eval(_offset)->getValue()) return then_cond->eval(_offset);
+        return else_cond->eval(_offset);
     }
 
     ::std::string print() const noexcept(true) override
@@ -237,11 +238,11 @@ public:
     Let(id_type aid, Expression* aexpr, Expression* abody, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true)
         : Expression(aspEnv), id(aid), expr(aexpr), body(abody) {}
 
-    Expression* eval() noexcept(false) override
+    Expression* eval(size_t _offset = 0ull) noexcept(false) override
     {
         ER_IF(body == nullptr,, throw ::std::runtime_error("body is not initialized!"); )
-        spEnv->push_back(env_pair(id, expr->eval()));
-        Expression* res = body->eval();
+        spEnv->push_back(env_pair(id, expr->eval(_offset)));
+        Expression* res = body->eval(_offset);
         spEnv->erase(::std::find_if(spEnv->begin(), spEnv->end(), [this](env_pair& x){ return x.id == id; }), spEnv->end());
         return res;
     }
@@ -264,6 +265,7 @@ public:
 class Function : public Expression
 {
     friend class Call;
+    friend class Generator;
     id_type id;
     Expression* callable_body;
 
@@ -271,7 +273,7 @@ public:
     Function(id_type aid, Expression* aexpr, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true) :
         Expression(aspEnv), id(aid), callable_body(aexpr) {}
 
-    Expression* eval() noexcept(true) override
+    Expression* eval(size_t) noexcept(true) override
     {
         return this;
     }
@@ -297,11 +299,13 @@ public:
     Call(Expression* afunc_expr, Expression* aarg_expr, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(false) :
         Expression(aspEnv), func_expr(afunc_expr), arg_expr(aarg_expr) {}
 
-    Expression* eval() noexcept(false) override
+    Expression* eval(size_t _offset = 0ull) noexcept(false) override
     {
-        spEnv->push_back(env_pair(dynamic_cast<Function*>(func_expr->eval())->id, arg_expr->eval()));
-        Expression* res = dynamic_cast<Function*>(func_expr->eval())->callable_body->eval();
-        spEnv->erase(::std::find_if(spEnv->begin(), spEnv->end(), [this](env_pair& x){ return x.id == dynamic_cast<Function*>(func_expr->eval())->id; }),
+        spEnv->push_back(env_pair(dynamic_cast<Function*>(func_expr->eval(_offset))->id, arg_expr->eval(_offset)));
+        Expression* res = func_expr->eval(_offset);
+        res = dynamic_cast<Function*>(res)->callable_body->eval(-::std::distance(::std::find_if(spEnv->begin(), spEnv->end(),
+                [&res](env_pair& x) { return x.id == dynamic_cast<Function*>(res)->id; }), spEnv->begin()) - 2);
+        spEnv->erase(::std::find_if(spEnv->begin(), spEnv->end(), [_offset, this](env_pair& x){ return x.id == dynamic_cast<Function*>(func_expr->eval(_offset))->id; }),
             spEnv->end());
         return res;
     }
@@ -328,13 +332,13 @@ public:
     Arr(::std::vector<Expression*>&& rrarr, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true)
         : Expression(aspEnv), arr(::std::move(rrarr)) {}
 
-    Expression* eval() noexcept(false) override
+    Expression* eval(size_t _offset = 0ull) noexcept(false) override
     {
         ::std::vector<Expression*> temp;
         for(auto& x : arr)
         {
             temp.reserve(temp.capacity() + 1);
-            temp.emplace_back(x->eval());
+            temp.emplace_back(x->eval(_offset));
         }
         return new Arr(::std::move(temp));
     }
@@ -369,12 +373,13 @@ public:
     Generator(Expression* acount, Expression* afoo, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true)
         : Expression(aspEnv), count(acount), functor(afoo) {}
 
-    Expression* eval() noexcept(false) override
+    Expression* eval(size_t _offset = 0ull) noexcept(false) override
     {
         ::std::vector<Expression*> temp;
-        for(decltype(count->eval()->getValue()) i {0}; i < count->eval()->getValue(); ++i)
+        for(decltype(count->eval(_offset)->getValue()) i {0}; i < count->eval(_offset)->getValue(); ++i)
         {
-            Expression* expr = (new Call(functor, new Value(i), spEnv))->eval();
+            Expression* expr = (new Call(functor, new Value(i), spEnv))->eval(-::std::distance(::std::find_if(spEnv->begin(), spEnv->end(),
+                [this](env_pair& x) { return x.id == dynamic_cast<Function*>(functor)->id; }), spEnv->begin()) - 2);
             temp.reserve(temp.capacity() + 1);
             temp.emplace_back(expr);
         }
@@ -402,10 +407,10 @@ public:
     AtExpr(Expression* rrarr, Expression* aidx, ::std::shared_ptr<env_type> aspEnv = nullptr) noexcept(true)
         : Expression(aspEnv), arr(rrarr), idx(aidx) {}
 
-    Expression* eval() noexcept(false) override
+    Expression* eval(size_t _offset = 0ull) noexcept(false) override
     {
-        Expression* getArr = arr->eval();
-        return dynamic_cast<Arr*>(getArr)->arr[idx->eval()->getValue()]->eval(); // need to eval() result (???)
+        Expression* getArr = arr->eval(_offset);
+        return dynamic_cast<Arr*>(getArr)->arr[idx->eval(_offset)->getValue()]->eval(_offset); // need to eval() result (???)
     }
 
     ::std::string print() const noexcept(true) override
