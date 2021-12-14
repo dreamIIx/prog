@@ -7,8 +7,10 @@
 #include <vector>
 #include <thread>
 #include <mutex>
+#include <condition_variable>
 #include <type_traits>
 #include <chrono>
+#include <queue>
 
 #define CURL_STATICLIB
 
@@ -55,13 +57,19 @@
 #endif
 
 #define _dx_COMMENTS
-//#undef _dx_COMMENTS
+#undef _dx_COMMENTS
 
-#define _MAX_BUF_SIZE 8096000000
+#define _MAX_BUF_SIZE 8096000
+#define _COUNT_OF_THREADS 3
 #define _PATH_TO_WRITE_TO "./testpath/output/"
-#define _PATH_TO_READ_FROM "./testpath/input/"
+#define _PATH_TO_READ_FROM "./testpath/test_data/"
 
+::std::condition_variable cv;
+::std::atomic_bool is_finished;
 ::std::mutex mt_filesys;
+::std::mutex mt_thread;
+::std::queue<::std::string> main_queue;
+::std::vector<::std::thread> vThreads;
 
 ::std::string parse_tag(const ::std::string& source, const ::std::string& tag, const ::std::string& prop, size_t& start_pos);
 static size_t writer(char*, size_t, size_t, ::std::string*);
@@ -106,22 +114,15 @@ template<typename T> ::std::atomic_ptrdiff_t Counter<T>::_current_active(0ull);
 class Parser : public Counter<Parser>
 {
 public:
-    enum class filetype : unsigned
-    {
-        none = 0,
-        localfile,
-        remotefile
-    };
-    filetype type;
     ::std::string ptcl;
     ::std::string path;
     ::std::string filename;
     ::std::string str;
 
-    Parser(filetype getDepend = Parser::filetype::none) noexcept(true) : Counter<Parser>(), type(getDepend) {}
+    Parser() noexcept(true) : Counter<Parser>() {}
 
-    Parser(::std::string filepath, filetype getDepend = Parser::filetype::none) noexcept(false)
-        : Counter<Parser>(), type(getDepend)
+    Parser(::std::string filepath) noexcept(false)
+        : Counter<Parser>()
     {
         ::std::unique_lock<::std::mutex> lock(mt_filesys, ::std::defer_lock);
         lock.lock();
@@ -129,7 +130,7 @@ public:
         {
             ::std::ifstream read;
             ::std::ofstream file;
-            if (type == filetype::none)
+            try
             {
                 size_t pos = 0ull;
                 ptcl = filepath.substr(0ull, (pos = filepath.find("://") + 3));
@@ -140,7 +141,6 @@ public:
                 ::std::string temp;
                 if (ptcl == "file://")
                 {
-                    type = filetype::localfile;
                     temp = filename;
                     if (temp.find(".htm") == ::std::string::npos) temp += ".html";
                     read.open(_PATH_TO_READ_FROM + path + temp);
@@ -152,32 +152,11 @@ public:
                         ::std::cerr << "source_name = " << _PATH_TO_WRITE_TO + path + temp << ::std::endl;
                         read.close();,
                         throw ::std::runtime_error("cannot open the file to write to"); )
+                    lock.unlock();
 #ifdef _dx_COMMENTS
-                    ::std::cout << _PATH_TO_READ_FROM + path + temp << ::std::endl;
+                    ::std::cout << "read from " << _PATH_TO_READ_FROM + path + temp << ::std::endl;
                     ::std::cout << "to " << _PATH_TO_WRITE_TO + path + temp << ::std::endl;
 #endif
-                }
-                else if (ptcl == "http://" || ptcl == "https://")
-                {
-                    type = filetype::remotefile;
-                    path += filename + '/';
-                    temp = path;
-                    ::std::filesystem::create_directories(_PATH_TO_WRITE_TO + temp);
-                    temp += filename;
-                    file.open(_PATH_TO_WRITE_TO + temp);
-                    ER_IFN(file.is_open(),
-                        ::std::cerr << "source_name = " << _PATH_TO_WRITE_TO + temp << ::std::endl;,
-                        throw ::std::runtime_error("cannot open the file to write to"); )
-#ifdef _dx_COMMENTS
-                    ::std::cout << "h to " << _PATH_TO_WRITE_TO + temp << ::std::endl;
-#endif
-                }
-                lock.unlock();
-            }
-            try
-            {
-                if (type == filetype::localfile)
-                {
                     char* buf = new char[_MAX_BUF_SIZE];
                     while(!read.eof()) { read.getline(buf, _MAX_BUF_SIZE); str.append(buf); str.append("\n"); }
                     delete[] buf;
@@ -185,13 +164,29 @@ public:
                     file << str;
                     file.close();
                 }
-                else if (type == filetype::remotefile)
+                else if (ptcl == "http://" || ptcl == "https://")
                 {
+                    path += filename;
+                    temp = path;
+                    ::std::filesystem::create_directories(_PATH_TO_WRITE_TO + temp);
+#ifdef _dx_COMMENTS
+                    ::std::cout << "create " << _PATH_TO_WRITE_TO + temp << ::std::endl;
+#endif
+                    temp += '/' + filename;
+                    file.open(_PATH_TO_WRITE_TO + temp);
+                    ER_IFN(file.is_open(),
+                        ::std::cerr << "source_name = " << _PATH_TO_WRITE_TO + temp << ::std::endl;,
+                        throw ::std::runtime_error("cannot open the file to write to"); )
+                    lock.unlock();
+#ifdef _dx_COMMENTS
+                    ::std::cout << "h to " << _PATH_TO_WRITE_TO + temp << ::std::endl;
+#endif
                     ER_IFN(send_req(filepath.c_str(), &str, false, (ptcl == "https://")),
                         ::std::cerr << "[!ERROR] oops link = " << filepath << ::std::endl;,
                         /*throw ::std::runtime_error("cannot get response!");*/ )
                     file << str;
                     file.close();
+
                 }
                 else throw::std::runtime_error("unsupported format!");
             }
@@ -207,18 +202,61 @@ public:
             lock.unlock();
         }
     }
-    
-    Parser(const Parser& inst) noexcept(true) : Counter<Parser>(inst), type(inst.type), ptcl(inst.ptcl), path(inst.path), str(inst.str) {}
-    
-    Parser(Parser&& inst) noexcept(true) :
-        Counter<Parser>(inst), ptcl(::std::move(inst.ptcl)), path(::std::move(inst.path)), str(::std::move(inst.str)) {}
+
+    void startThreads()
+    {
+        is_finished.store(false);
+        vThreads.reserve(_COUNT_OF_THREADS);
+        for(size_t i {0}; i < _COUNT_OF_THREADS; ++i)
+        {
+            vThreads.emplace_back(::std::thread([]()
+            {
+                while(!is_finished.load())
+                {
+                    ::std::unique_lock<::std::mutex> lock(mt_thread);
+                    cv.wait(lock, []() -> bool { return !main_queue.empty() || is_finished.load(); });
+                    if (is_finished.load()) break;
+
+                    ::std::string str = main_queue.front();
+                    main_queue.pop();
+                    lock.unlock();
+                    cv.notify_all();
+                    Parser instance(str);
+                    instance.parse();
+                }
+            }));
+        }
+    }
+
+    void finishThreads()
+    {
+        is_finished.store(true);
+        ::std::thread thr([]()
+            {
+                while (is_finished.load()) cv.notify_all();
+            });
+        while(vThreads.size())
+        {
+            for(auto it = vThreads.begin(); it != vThreads.end();)
+            {
+                if (it->joinable())
+                {
+                    it->join();
+                    it = vThreads.erase(it);
+                    continue;
+                }
+                ++it;
+            }
+        }
+        is_finished.store(false);
+        thr.join();
+    }
 
     void parse()
     {
         auto toUP = [](unsigned char c){ return ::std::toupper(c); };
         size_t pos = 0ull;
         size_t prev_pos = 0ull;
-        ::std::vector<::std::thread> vThread;
         ::std::string tag = "a";
         ::std::string property = "href=\"";
         ::std::string temp_str = parse_tag(str, tag, property, pos);
@@ -233,22 +271,19 @@ public:
         {
             if (temp_str.back() == '/') temp_str = temp_str.substr(0ull, temp_str.size() - 1);
             pos += 9;
-            vThread.reserve(vThread.capacity() + 1);
-            vThread.emplace_back(::std::thread([this, temp_str]() mutable -> void {
-                filetype depend = filetype::none;
-                if (temp_str.find("file://") == ::std::string::npos &&
-                    temp_str.find("http://") == ::std::string::npos &&
-                    temp_str.find("https://") == ::std::string::npos)
-                {
-                    if (temp_str.front() == '/') temp_str.erase(temp_str.begin());
-                    temp_str.insert(0ull, path);
-                    temp_str.insert(0ull, ptcl);
-                    //depend = type;
-                }
-                Parser instance(temp_str, depend);
-                instance.parse();
-            }));
-            //vThread.back().detach();
+            if (temp_str.find("file://") == ::std::string::npos &&
+                temp_str.find("http://") == ::std::string::npos &&
+                temp_str.find("https://") == ::std::string::npos)
+            {
+                if (temp_str.front() == '/') temp_str.erase(temp_str.begin());
+                temp_str.insert(0ull, path);
+                temp_str.insert(0ull, ptcl);
+            }
+            ::std::unique_lock<::std::mutex> lock(mt_thread, ::std::defer_lock);
+            lock.lock();
+            main_queue.push(temp_str);
+            lock.unlock();
+            cv.notify_all();
             prev_pos = pos;
             temp_str = parse_tag(str, tag, property, pos);
             if (pos == ::std::string::npos)
@@ -257,19 +292,6 @@ public:
                 std::transform(property.begin(), property.end(), property.begin(), toUP);
                 pos = prev_pos;
                 temp_str = parse_tag(str, tag, property, pos);
-            }
-        }
-        while(vThread.size())
-        {
-            for(auto it = vThread.begin(); it != vThread.end();)
-            {
-                if (it->joinable())
-                {
-                    it->join();
-                    it = vThread.erase(it);
-                    continue;
-                }
-                ++it;
             }
         }
     }
@@ -283,11 +305,16 @@ int main()
     curl_global_init(CURL_GLOBAL_ALL);
     CURL* curl = curl_easy_init();
 
-    Parser test("file://input.html/");
+    Parser test("file://0.html/");
+    test.startThreads();
     test.parse();
-    //while(test._current_active > 1) {}
+    while(test._current_active > 1)
+    {
+        ::std::this_thread::sleep_for(::std::chrono::microseconds(1));
+    }
     ::std::cout << "time = " << ::std::chrono::duration_cast<::std::chrono::microseconds>(::std::chrono::system_clock::now() - test.startTime).count() << ::std::endl;
     ::std::cout << "count of workers = " << test.countOf << ::std::endl;
+    test.finishThreads();
 
 	curl_global_cleanup();
 
