@@ -308,7 +308,7 @@ int main()
     Parser test("file://0.html/");
     test.startThreads();
     test.parse();
-    while(test._current_active > 1)
+    while(test._current_active > 1 || !main_queue.empty())
     {
         ::std::this_thread::sleep_for(::std::chrono::microseconds(1));
     }
