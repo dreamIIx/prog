@@ -14,12 +14,12 @@
 
 #define CURL_STATICLIB
 
-#include "curl/curl.h"
+#include "../curl/curl.h"
 
 #ifdef _DEBUG
-#pragma comment(lib, "curl/libcurl_a_debug.lib")
+#pragma comment(lib, "./curl/libcurl_a_debug.lib")
 #else
-#pragma comment(lib, "curl/libcurl_a.lib")
+#pragma comment(lib, "./curl/libcurl_a.lib")
 #endif
 
 #if !defined(defDX_S)
@@ -60,7 +60,7 @@
 #undef _dx_COMMENTS
 
 #define _MAX_BUF_SIZE 8096000
-#define _COUNT_OF_THREADS 3
+#define _COUNT_OF_THREADS 30
 #define _PATH_TO_WRITE_TO "./testpath/output/"
 #define _PATH_TO_READ_FROM "./testpath/test_data/"
 
@@ -302,9 +302,6 @@ public:
 
 int main()
 {
-    curl_global_init(CURL_GLOBAL_ALL);
-    CURL* curl = curl_easy_init();
-
     Parser test("file://0.html/");
     test.startThreads();
     test.parse();
@@ -315,8 +312,6 @@ int main()
     ::std::cout << "time = " << ::std::chrono::duration_cast<::std::chrono::microseconds>(::std::chrono::system_clock::now() - test.startTime).count() << ::std::endl;
     ::std::cout << "count of workers = " << test.countOf << ::std::endl;
     test.finishThreads();
-
-	curl_global_cleanup();
 
     return 0;
 }
