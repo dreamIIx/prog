@@ -14,12 +14,12 @@
 
 #define CURL_STATICLIB
 
-#include "curl/curl.h"
+#include "./curl/curl.h"
 
 #ifdef _DEBUG
-#pragma comment(lib, "curl/libcurl_a_debug.lib")
+#pragma comment(lib, "./libcurl.dll.a")
 #else
-#pragma comment(lib, "curl/libcurl_a.lib")
+#pragma comment(lib, "./libcurl.dll.a")
 #endif
 
 #if !defined(defDX_S)
@@ -60,7 +60,7 @@
 #undef _dx_COMMENTS
 
 #define _MAX_BUF_SIZE 8096000
-#define _COUNT_OF_THREADS 3
+#define _COUNT_OF_THREADS 8
 #define _PATH_TO_WRITE_TO "./testpath/output/"
 #define _PATH_TO_READ_FROM "./testpath/test_data/"
 
@@ -203,55 +203,6 @@ public:
         }
     }
 
-    void startThreads()
-    {
-        is_finished.store(false);
-        vThreads.reserve(_COUNT_OF_THREADS);
-        for(size_t i {0}; i < _COUNT_OF_THREADS; ++i)
-        {
-            vThreads.emplace_back(::std::thread([]()
-            {
-                while(!is_finished.load())
-                {
-                    ::std::unique_lock<::std::mutex> lock(mt_thread);
-                    cv.wait(lock, []() -> bool { return !main_queue.empty() || is_finished.load(); });
-                    if (is_finished.load()) break;
-
-                    ::std::string str = main_queue.front();
-                    main_queue.pop();
-                    lock.unlock();
-                    cv.notify_all();
-                    Parser instance(str);
-                    instance.parse();
-                }
-            }));
-        }
-    }
-
-    void finishThreads()
-    {
-        is_finished.store(true);
-        ::std::thread thr([]()
-            {
-                while (is_finished.load()) cv.notify_all();
-            });
-        while(vThreads.size())
-        {
-            for(auto it = vThreads.begin(); it != vThreads.end();)
-            {
-                if (it->joinable())
-                {
-                    it->join();
-                    it = vThreads.erase(it);
-                    continue;
-                }
-                ++it;
-            }
-        }
-        is_finished.store(false);
-        thr.join();
-    }
-
     void parse()
     {
         auto toUP = [](unsigned char c){ return ::std::toupper(c); };
@@ -283,7 +234,7 @@ public:
             lock.lock();
             main_queue.push(temp_str);
             lock.unlock();
-            cv.notify_all();
+            cv.notify_one();
             prev_pos = pos;
             temp_str = parse_tag(str, tag, property, pos);
             if (pos == ::std::string::npos)
@@ -297,26 +248,69 @@ public:
     }
 
     ~Parser() noexcept(false) {}
-
 };
+
+void startThreads()
+{
+    is_finished.store(false);
+    vThreads.reserve(_COUNT_OF_THREADS);
+    for(size_t i {0}; i < _COUNT_OF_THREADS; ++i)
+    {
+        vThreads.emplace_back(::std::thread([]()
+        {
+            while(!is_finished.load())
+            {
+                ::std::unique_lock<::std::mutex> lock(mt_thread);
+                cv.wait(lock, []() -> bool { return !main_queue.empty() || is_finished.load(); });
+                if (is_finished.load()) break;
+
+                ::std::string str = main_queue.front();
+                main_queue.pop();
+                lock.unlock();
+                cv.notify_one();
+                Parser instance(str);
+                instance.parse();
+            }
+        }));
+    }
+}
+
+void finishThreads()
+{
+    is_finished.store(true);
+    ::std::thread thr([]()
+        {
+            while (is_finished.load()) cv.notify_all();
+        });
+    while(vThreads.size())
+    {
+        for(auto it = vThreads.begin(); it != vThreads.end();)
+        {
+            if (it->joinable())
+            {
+                it->join();
+                it = vThreads.erase(it);
+                continue;
+            }
+            ++it;
+        }
+    }
+    is_finished.store(false);
+    thr.join();
+}
 
 int main()
 {
-    curl_global_init(CURL_GLOBAL_ALL);
-    CURL* curl = curl_easy_init();
-
+    startThreads();
     Parser test("file://0.html/");
-    test.startThreads();
     test.parse();
     while(test._current_active > 1 || !main_queue.empty())
     {
         ::std::this_thread::sleep_for(::std::chrono::microseconds(1));
     }
     ::std::cout << "time = " << ::std::chrono::duration_cast<::std::chrono::microseconds>(::std::chrono::system_clock::now() - test.startTime).count() << ::std::endl;
+    finishThreads();
     ::std::cout << "count of workers = " << test.countOf << ::std::endl;
-    test.finishThreads();
-
-	curl_global_cleanup();
 
     return 0;
 }

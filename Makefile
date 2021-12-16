@@ -2,12 +2,12 @@
 
 CXX = g++
 DEBUGFLAGS = -g
-RELEASEFLAGS = -O2
+RELEASEFLAGS = -O3
 
 ifeq ($(OS), Windows_NT)
 	SHELL = CMD
-	CFLAGS = -c -Wall -std=c++20 -I./Source
-	LDFLAGS = -L/usr/lib/ -lcurl -lssl -lcrypto -lpthread
+	CFLAGS = -c -Wall -std=c++20 -I./curl/include
+	LDFLAGS = -L./curl/lib -lssl -lcrypto -lcurl
 	EXE_main4_2d = ./Debug/main4_2.exe
 	EXE_main4_2 = ./Release/main4_2.exe
 	EXE_main1d = ./Debug/main1.exe
@@ -23,7 +23,7 @@ ifeq ($(OS), Windows_NT)
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S), Linux)
-		CFLAGS = -c -Wall -std=c++20 -I./Source
+		CFLAGS = -c -Wall -std=c++20 -I./
 		LDFLAGS = -L/usr/lib/ -lcurl -lssl -lcrypto -lpthread
 		EXE_main4_2d = ./Debug/main4_2
 		EXE_main4_2 = ./Release/main4_2
