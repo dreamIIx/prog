@@ -260,13 +260,15 @@ void startThreads()
         {
             while(!is_finished.load())
             {
-                ::std::unique_lock<::std::mutex> lock(mt_thread);
-                cv.wait(lock, []() -> bool { return !main_queue.empty() || is_finished.load(); });
-                if (is_finished.load()) break;
+                ::std::string str;
+                {
+                    ::std::unique_lock<::std::mutex> lock(mt_thread);
+                    cv.wait(lock, []() -> bool { return !main_queue.empty() || is_finished.load(); });
+                    if (is_finished.load()) break;
 
-                ::std::string str = main_queue.front();
-                main_queue.pop();
-                lock.unlock();
+                    str = main_queue.front();
+                    main_queue.pop();
+                }
                 cv.notify_one();
                 Parser instance(str);
                 instance.parse();
