@@ -6,151 +6,103 @@ RELEASEFLAGS = -O3
 
 ifeq ($(OS), Windows_NT)
 	SHELL = CMD
-	CFLAGS = -c -Wall -std=c++20 -I./curl/include
-	LDFLAGS = -L./curl/lib -lssl -lcrypto -lcurl
-	EXE_main4_2d = ./Debug/main4_2.exe
-	EXE_main4_2 = ./Release/main4_2.exe
-	EXE_main1d = ./Debug/main1.exe
-	EXE_main1 = ./Release/main1.exe
-	EXE_main2d = ./Debug/main2.exe
-	EXE_main2 = ./Release/main2.exe
-	EXE_main3d = ./Debug/main3.exe
-	EXE_main3 = ./Release/main3.exe
-	EXE_main4d = ./Debug/main4.exe
-	EXE_main4 = ./Release/main4.exe
-	EXE_main5d = ./Debug/main5.exe
-	EXE_main5 = ./Release/main5.exe
+	CFLAGS = -c -Wall -std=c++20
+	LDFLAGS = 
+	EXE_vmain1d = ./Debug/vmain1.exe
+	EXE_vmain1 = ./Release/vmain1.exe
+	EXE_emain1d = ./Debug/emain1.exe
+	EXE_emain1 = ./Release/emain1.exe
+	EXE_emain2d = ./Debug/emain2.exe
+	EXE_emain2 = ./Release/emain2.exe
+	EXE_emain3d = ./Debug/emain3.exe
+	EXE_emain3 = ./Release/emain3.exe
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S), Linux)
-		CFLAGS = -c -Wall -std=c++20 -I./
-		LDFLAGS = -L/usr/lib/ -lcurl -lssl -lcrypto -lpthread
-		EXE_main4_2d = ./Debug/main4_2
-		EXE_main4_2 = ./Release/main4_2
-		EXE_main1d = ./Debug/main1
-		EXE_main1 = ./Release/main1
-		EXE_main2d = ./Debug/main2
-		EXE_main2 = ./Release/main2
-		EXE_main3d = ./Debug/main3
-		EXE_main3 = ./Release/main3
-		EXE_main4d = ./Debug/main4
-		EXE_main4 = ./Release/main4
-		EXE_main5d = ./Debug/main5
-		EXE_main5 = ./Release/main5
+		CFLAGS = -c -Wall -std=c++20
+		LDFLAGS = 
+		EXE_vmain1d = ./Debug/vmain1
+		EXE_vmain1 = ./Release/vmain1
+		EXE_emain1d = ./Debug/emain1
+		EXE_emain1 = ./Release/emain1
+		EXE_emain2d = ./Debug/emain2
+		EXE_emain2 = ./Release/emain2
+		EXE_emain3d = ./Debug/emain3
+		EXE_emain3 = ./Release/emain3
     endif
 endif
 
 $(info init..)
-main4_2d: ./Source/main4_2.cpp $(EXE_main4_2d)
-main4_2: ./Source/main4_2.cpp $(EXE_main4_2)
-main1d: ./Source/main1.cpp $(EXE_main1d)
-main1: ./Source/main1.cpp $(EXE_main1)
-main2d: ./Source/main2.cpp $(EXE_main2d)
-main2: ./Source/main2.cpp $(EXE_main2)
-main3d: ./Source/main3.cpp $(EXE_main3d)
-main3: ./Source/main3.cpp $(EXE_main3)
-main4d: ./Source/main4.cpp $(EXE_main4d)
-main4: ./Source/main4.cpp $(EXE_main4)
-main5d: ./Source/main5.cpp $(EXE_main5d)
-main5: ./Source/main5.cpp $(EXE_main5)
+vmain1d: ./Source/vmain1.cpp $(EXE_vmain1d)
+vmain1: ./Source/vmain1.cpp $(EXE_vmain1)
+emain1d: ./Source/excmain1.cpp $(EXE_emain1d)
+emain1: ./Source/excmain1.cpp $(EXE_emain1)
+emain2d: ./Source/excmain2.cpp $(EXE_emain2d)
+emain2: ./Source/excmain2.cpp $(EXE_emain2)
+emain3d: ./Source/excmain2.cpp $(EXE_emain3d)
+emain3: ./Source/excmain2.cpp $(EXE_emain3)
+	
+./Source/vmain1.o: ./Source/vmain1.cpp
+	$(info processing....)
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/vmain1.d.o: ./Source/vmain1.cpp
+	$(info processing....)
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 
-./Source/fraction.o: ./Source/fraction.cpp ./Source/fraction.h
+./Source/emain1.o: ./Source/excmain1.cpp
 	$(info processing....)
 	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
 	
-./Source/CP_main1.o: ./Source/CP_main1.cpp ./Source/fraction.cpp
+./Source/emain1.d.o: ./Source/excmain1.cpp
 	$(info processing....)
-	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/main1.o: ./Source/main1.cpp
-	$(info processing....)
-	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/main2.o: ./Source/main2.cpp
-	$(info processing....)
-	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/main3.o: ./Source/main3.cpp
-	$(info processing....)
-	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/main4.o: ./Source/main4.cpp
-	$(info processing....)
-	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 
-./Source/main4_2.d.o: ./Source/main4_2.cpp
+./Source/emain2.o: ./Source/excmain2.cpp
+	$(info processing....)
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/emain2.d.o: ./Source/excmain2.cpp
+	$(info processing....)
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
+
+./Source/emain3.o: ./Source/excmain3.cpp
+	$(info processing....)
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/emain3.d.o: ./Source/excmain3.cpp
 	$(info processing....)
 	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
-./Source/main5.o: ./Source/main5.cpp
-	$(info processing....)
-	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/main1.d.o: ./Source/main1.cpp
-	$(info processing....)
-	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/main2.d.o: ./Source/main2.cpp
-	$(info processing....)
-	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/main3.d.o: ./Source/main3.cpp
-	$(info processing....)
-	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/main4.d.o: ./Source/main4.cpp
-	$(info processing....)
-	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
-	
-./Source/main5.d.o: ./Source/main5.cpp
-	$(info processing....)
-	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
-	
-$(EXE_main4_2d): ./Source/main4_2.d.o
+$(EXE_vmain1d): ./Source/vmain1.d.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-$(EXE_main4_2): ./Source/main4_2.o
-	$(info processing......)
-	$(CXX) $(LDFLAGS) $^ -o $@
-	
-$(EXE_main1d): ./Source/main1.d.o
+$(EXE_vmain1): ./Source/vmain1.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-$(EXE_main1): ./Source/main1.o
-	$(info processing......)
-	$(CXX) $(LDFLAGS) $^ -o $@
-	
-$(EXE_main2d): ./Source/main2.d.o
+$(EXE_emain1d): ./Source/emain1.d.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-$(EXE_main2): ./Source/main2.o
-	$(info processing......)
-	$(CXX) $(LDFLAGS) $^ -o $@
-	
-$(EXE_main3d): ./Source/main3.d.o
+$(EXE_emain1): ./Source/emain1.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-$(EXE_main3): ./Source/main3.o
-	$(info processing......)
-	$(CXX) $(LDFLAGS) $^ -o $@
-	
-$(EXE_main4d): ./Source/main4.d.o
+$(EXE_emain2d): ./Source/emain2.d.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-$(EXE_main4): ./Source/main4.o
-	$(info processing......)
-	$(CXX) $(LDFLAGS) $^ -o $@
-	
-$(EXE_main5d): ./Source/main5.d.o
+$(EXE_emain2): ./Source/emain2.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-$(EXE_main5): ./Source/main5.o
+$(EXE_emain3d): ./Source/emain3.d.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(EXE_emain3): ./Source/emain3.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
