@@ -542,15 +542,15 @@ double Int_Simpson(double (*f)(double), double x0, double x1, double eps = 0.000
     {
         res = 0.;
         res2 = 0.;
-        for(size_t i = 0ull; i < n; ++i)
+        for(size_t i = 0ull; i < n; i += 2)
         {
-            res += ((f(x0 + i * step) + f(x0 + (i + 1) * step) + f(x0 + (i + 2) * step)) / 6) * 2 * step;
+            res += ((f(x0 + i * step) + f(x0 + (i + 1) * step) + f(x0 + (i + 2) * step)) / 6) * 4 * step;
         }
         step /= 2.;
         n *= 2.;
-        for(size_t i = 0ull; i < n; ++i)
+        for(size_t i = 0ull; i < n; i += 2)
         {
-            res2 += ((f(x0 + i * step) + f(x0 + (i + 1) * step) + f(x0 + (i + 2) * step)) / 6) * 2 * step;
+            res2 += ((f(x0 + i * step) + f(x0 + (i + 1) * step) + f(x0 + (i + 2) * step)) / 6) * 4 * step;
         }
         it_count = n;
     } while(::std::fabs(res2 - res) / 15. >= eps);
@@ -559,66 +559,16 @@ double Int_Simpson(double (*f)(double), double x0, double x1, double eps = 0.000
 
 int main()
 {
-    auto foo11 = [](double x) -> double { return ::std::sin(x); };
+    auto foo11 = [](double x) -> double { return ::std::pow(x, 2.); }; //
 
     double first = 0.;
-    double second = 3.141592;
+    double second = 3.;
     it_count = 0ull;
     ::std::cout << "Int_Rect = " << Int_Rect(foo11, first, second) << ' ' << it_count << ::std::endl;
     it_count = 0ull;
     ::std::cout << "Int_Trapezoid = " << Int_Trapezoid(foo11, first, second) << ' ' << it_count << ::std::endl;
     it_count = 0ull;
-    ::std::cout << "Int_Simpson = " << Int_Simpson(foo11, first, second) << ' ' << it_count << ::std::endl;
-
-    /*func2 foo1 = [](double x, double y) -> double { return ::std::sin(1/x); };
-    func2 foo2 = [](double x, double y) -> double { return ::std::sin(1/y); };
-    func2 foo3 = [](double x, double y) -> double { return ::std::sin(1/x); };
-    func2 foo4 = [](double x, double y) -> double { return ::std::sin(1/y); };
-
-    _x_1 = 3.19;
-    _x_2 = 3.19;
-    _x_3 = 2.0;
-    _x_4 = 2.0;
-    it_count = 0ull;
-    auto res_1 = rootByPlainIterationSystem({ {_x_1}, {_x_2}/*, {_x_3}, {_x_4} }, foo1, foo2/*, foo3, foo4);
-    ::std::cout << "rootByPlainIterationSystem:" << ::std::endl;
-    ::std::cout << "Count of iterations: " << it_count << ::std::endl;
-    print_mtx(res_1);
-
-    unsigned long long exc = 0ull;
-
-    _x_1 = 3.19;
-    _x_2 = 3.19;
-    _x_3 = 2.0;
-    _x_4 = 2.0;
-    it_count = 0ull;
-    auto Ya = Yacob(foo1, foo2/*, foo3, foo4);
-    ::std::cout << "\nrootByNewtonSystem:" << ::std::endl;
-    //::std::cout << "Det Yacobian = " << det(Ya, exc, DIM_FOO, 0) << ::std::endl;
-    auto res_2 = rootByNewtonSystem({ {_x_1}, {_x_2}/*, {_x_3}, {_x_4} }, foo3, foo4/*, foo3, foo4);
-    ::std::cout << "Count of iterations: " << it_count << ::std::endl;
-    print_mtx(res_2);*/
-
-    
-    /*::std::cout << derivative_(1ull, 1ull, *foo1, _vec_x_) << ::std::endl;
-    ::std::cout << derivative_(1ull, 1ull, *foo2, _vec_x_) << ::std::endl;
-    ::std::cout << derivative_(1ull, 0ull, *foo1, _vec_x_) << ::std::endl;
-    ::std::cout << derivative_(1ull, 0ull, *foo2, _vec_x_) << ::std::endl;*/
-
-    /*auto res_mtx = Yacob(foo1, foo2);
-    print_mtx(res_mtx);
-
-    unsigned long long exc = 0ull;
-    double det_res_mtx = det(res_mtx, exc, DIM_FOO, 0);
-    ::std::cout << "Yacobian = " << det_res_mtx << ::std::endl;
-
-    auto res_mtx_reverse = ReverseMatrix(res_mtx);
-    print_mtx(res_mtx_reverse);
-
-    auto res_mult = MultMtxOnMtx(res_mtx, res_mtx_reverse);
-    print_mtx(res_mult);
-    res_mult = MultMtxOnMtx(res_mtx_reverse, res_mtx);
-    print_mtx(res_mult);*/
+    ::std::cout << "Int_Simpson = " << Int_Simpson(foo11, first, second) << ' ' << (it_count>>1) << ::std::endl;
 
     return 0;
 }
