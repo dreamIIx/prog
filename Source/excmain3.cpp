@@ -66,13 +66,13 @@ typedef unsigned	udata_t;
 typedef signed		data_t;
 
 // szOfInBits_...
-constexpr size_t sz_INT_TYPE_				=	(sizeof(udata_t) * 8);
-constexpr size_t sz_HALF_INT_TYPE_			=	(sizeof(udata_t) / 2) * 8;
-constexpr size_t sz_QUARTER_INT_TYPE_		=	(sizeof(udata_t) / 4) * 8;
+constexpr size_t sz_INT_TYPE_				=	(sizeof(udata_t) * __CHAR_BIT__);
+constexpr size_t sz_HALF_INT_TYPE_			=	(sizeof(udata_t) / 2) * __CHAR_BIT__;
+constexpr size_t sz_QUARTER_INT_TYPE_		=	(sizeof(udata_t) / 4) * __CHAR_BIT__;
 constexpr size_t sz_3_QUARTERS_INT_TYPE_	=	(sz_HALF_INT_TYPE_ + sz_QUARTER_INT_TYPE_);
 
 // shifts
-constexpr size_t _SHFT2_X_					=	(sizeof(udata_t) * 8 - _X_);
+constexpr size_t _SHFT2_X_					=	(sizeof(udata_t) * __CHAR_BIT__ - _X_);
 
 ptrdiff_t _y_ = _Y_;
 

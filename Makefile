@@ -20,6 +20,8 @@ ifeq ($(OS), Windows_NT)
 	EXE_emain2 = ./Release/emain2.exe
 	EXE_emain3d = ./Debug/emain3.exe
 	EXE_emain3 = ./Release/emain3.exe
+	EXE_emain4d = ./Debug/emain4.exe
+	EXE_emain4 = ./Release/emain4.exe
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S), Linux)
@@ -37,6 +39,8 @@ else
 		EXE_emain2 = ./Release/emain2
 		EXE_emain3d = ./Debug/emain3
 		EXE_emain3 = ./Release/emain3
+		EXE_emain4d = ./Debug/emain4
+		EXE_emain4 = ./Release/emain4
     endif
 endif
 
@@ -51,8 +55,10 @@ emain1d: ./Source/excmain1.cpp $(EXE_emain1d)
 emain1: ./Source/excmain1.cpp $(EXE_emain1)
 emain2d: ./Source/excmain2.cpp $(EXE_emain2d)
 emain2: ./Source/excmain2.cpp $(EXE_emain2)
-emain3d: ./Source/excmain2.cpp $(EXE_emain3d)
-emain3: ./Source/excmain2.cpp $(EXE_emain3)
+emain3d: ./Source/excmain3.cpp $(EXE_emain3d)
+emain3: ./Source/excmain3.cpp $(EXE_emain3)
+emain4d: ./Source/excmain4.cpp $(EXE_emain4d)
+emain4: ./Source/excmain4.cpp $(EXE_emain4)
 
 ./Source/vmain1.o: ./Source/vmain1.cpp
 	$(info processing....)
@@ -101,6 +107,14 @@ emain3: ./Source/excmain2.cpp $(EXE_emain3)
 ./Source/emain3.d.o: ./Source/excmain3.cpp
 	$(info processing....)
 	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
+
+./Source/emain4.o: ./Source/excmain4.cpp
+	$(info processing....)
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/emain4.d.o: ./Source/excmain4.cpp
+	$(info processing....)
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
 $(EXE_vmain1d): ./Source/vmain1.d.o
 	$(info processing......)
@@ -147,6 +161,14 @@ $(EXE_emain3d): ./Source/emain3.d.o
 	$(CXX) $(LDFLAGS) $^ -o $@
 
 $(EXE_emain3): ./Source/emain3.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(EXE_emain4d): ./Source/emain4.d.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(EXE_emain4): ./Source/emain4.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
