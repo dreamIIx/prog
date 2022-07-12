@@ -7,7 +7,7 @@ RELEASEFLAGS = -O3
 ifeq ($(OS), Windows_NT)
 	SHELL = CMD
 	CFLAGS = -c -Wall -std=c++20
-	LDFLAGS = 
+	LDFLAGS =
 	EXE_vmain1d = ./Debug/vmain1.exe
 	EXE_vmain1 = ./Release/vmain1.exe
 	EXE_vmain2d = ./Debug/vmain2.exe
@@ -22,11 +22,13 @@ ifeq ($(OS), Windows_NT)
 	EXE_emain3 = ./Release/emain3.exe
 	EXE_emain4d = ./Debug/emain4.exe
 	EXE_emain4 = ./Release/emain4.exe
+	EXE_emain5d = ./Debug/emain5.exe
+	EXE_emain5 = ./Release/emain5.exe
 else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S), Linux)
 		CFLAGS = -c -Wall -std=c++20 -ftree-vectorize -mavx
-		LDFLAGS = -lboost_iostreams -lboost_system -lboost_filesystem
+		LDFLAGS = -lboost_iostreams -lboost_system -lboost_filesystem -lboost_thread
 		EXE_vmain1d = ./Debug/vmain1
 		EXE_vmain1 = ./Release/vmain1
 		EXE_vmain2d = ./Debug/vmain2
@@ -41,6 +43,8 @@ else
 		EXE_emain3 = ./Release/emain3
 		EXE_emain4d = ./Debug/emain4
 		EXE_emain4 = ./Release/emain4
+		EXE_emain5d = ./Debug/emain5
+		EXE_emain5 = ./Release/emain5
     endif
 endif
 
@@ -59,6 +63,8 @@ emain3d: ./Source/excmain3.cpp $(EXE_emain3d)
 emain3: ./Source/excmain3.cpp $(EXE_emain3)
 emain4d: ./Source/excmain4.cpp $(EXE_emain4d)
 emain4: ./Source/excmain4.cpp $(EXE_emain4)
+emain5d: ./Source/excmain5.cpp $(EXE_emain5d)
+emain5: ./Source/excmain5.cpp $(EXE_emain5)
 
 ./Source/vmain1.o: ./Source/vmain1.cpp
 	$(info processing....)
@@ -115,6 +121,14 @@ emain4: ./Source/excmain4.cpp $(EXE_emain4)
 ./Source/emain4.d.o: ./Source/excmain4.cpp
 	$(info processing....)
 	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
+
+./Source/emain5.o: ./Source/excmain5.cpp
+	$(info processing....)
+	$(CXX) $(RELEASEFLAGS) $(CFLAGS) $< -o $@
+	
+./Source/emain5.d.o: ./Source/excmain5.cpp
+	$(info processing....)
+	$(CXX) $(DEBUGFLAGS) $(CFLAGS) $< -o $@
 	
 $(EXE_vmain1d): ./Source/vmain1.d.o
 	$(info processing......)
@@ -169,6 +183,14 @@ $(EXE_emain4d): ./Source/emain4.d.o
 	$(CXX) $(LDFLAGS) $^ -o $@
 
 $(EXE_emain4): ./Source/emain4.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(EXE_emain5d): ./Source/emain5.d.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) $^ -o $@
+
+$(EXE_emain5): ./Source/emain5.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
