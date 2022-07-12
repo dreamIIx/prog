@@ -162,7 +162,8 @@ public:
             {
                 if (vvResMap[y][x])
                 {
-                    vResList.push_back({y, x});
+                    vResList.reserve(vResList.capacity() + 1);
+                    vResList.emplace_back(::std::make_pair(y, x));
                 }
             }
         }
@@ -221,8 +222,11 @@ private:
                         main_queue.pop();
                     }
                     cv.notify_one();
-                    Recognizer temp;
-                    elem_t state = temp.recognizeCell(*this, temp_xy.first, temp_xy.second) ? 1 : 0;
+                    elem_t state;
+                    {
+                        Recognizer temp;
+                        state = temp.recognizeCell(*this, temp_xy.first, temp_xy.second) ? 1 : 0;
+                    }
                     vvResMap[temp_xy.second][temp_xy.first] = state;
                 }
             }));
@@ -276,7 +280,6 @@ private:
 
 bool Recognizer::recognizeCell(const Map& instance, size_t ax, size_t ay) const noexcept(false) try
 {
-    bool found = true;
     for(size_t ky {0}; ky < instance.vvKernel.size(); ++ky)
     {
         for(size_t kx {0}; kx < instance.vvKernel.back().size(); ++kx)
@@ -297,6 +300,7 @@ int main()
     Map test;
     ::std::cin >> test;
     test.recognize();
+    ::std::cout << "Output: " << ::std::endl;
     test.printResultMap();
 
     return 0;
