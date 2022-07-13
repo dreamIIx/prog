@@ -94,6 +94,10 @@ udata_t sumOfClusters(vCluster_t);
 inline char getColorByIndex(clr_idx);
 udata_t deleteClustersByIntersectionRow(udata_t&, udata_t);
 void shiftClusters(udata_t[][_Y_]);
+void heapify(vCluster_t&, size_t, size_t, bool (cmp)(cluster_t&, cluster_t&));
+void heapSort(vCluster_t&, size_t, bool (cmp)(cluster_t&, cluster_t&));
+template<typename T>
+void _dx_swap(T&, T&);
 
 int main()
 {
@@ -137,7 +141,7 @@ int main()
         size_t moveNum = 1ull;
         vCluster_t vClusters;
         vCluster_t vTempClusters;
-        auto spec_predicat_ = [](cluster_t x, cluster_t y)
+        auto spec_predicat_ = [](cluster_t& x, cluster_t& y) -> bool
         {
             if ((x.second << sz_HALF_INT_TYPE_) >> sz_HALF_INT_TYPE_ == (y.second << sz_HALF_INT_TYPE_) >> sz_HALF_INT_TYPE_)
             {
@@ -166,8 +170,7 @@ int main()
                     vClusters.emplace_back(::std::make_pair((dim_ << sz_3_QUARTERS_INT_TYPE_) | (_Y_ << sz_HALF_INT_TYPE_) | vTempClusters[i].first, vTempClusters[i].second));
                 }
             }
-            ::std::make_heap(vClusters.begin(), vClusters.end(), spec_predicat_);
-            ::std::sort_heap(vClusters.begin(), vClusters.end(), spec_predicat_);
+            heapSort(vClusters, vClusters.size(), spec_predicat_);
         };
 
         heap_sort_spec();
@@ -417,4 +420,55 @@ void shiftClusters(udata_t data[][_Y_])
             }
         }
     }
+}
+
+void heapify(vCluster_t& v, size_t n, size_t i, bool (cmp)(cluster_t&, cluster_t&))
+{
+    size_t largest;
+    size_t left;
+    size_t right;
+    
+    largest = i;
+
+    do
+    {
+        // first time useless
+        _dx_swap(v[i], v[largest]);
+
+        //largest = i;
+        i = largest;
+        left = 2 * i + 1;
+        right = 2 * i + 2;
+
+        if (left < n)
+        {
+            if (cmp(v[largest], v[left])) largest = left;
+        }
+        if (right < n)
+        {
+            if (cmp(v[largest], v[right])) largest = right;
+        }
+    } while(largest != i);
+}
+
+void heapSort(vCluster_t& v, size_t n, bool (cmp)(cluster_t&, cluster_t&))
+{
+    for (short i = n / 2 - 1; i >= 0; --i)
+    {
+        heapify(v, n, i, cmp);
+    }
+ 
+    for (short i = n - 1; i > 0; --i)
+    {
+        _dx_swap(v[0], v[i]);
+        heapify(v, i, 0, cmp);
+    }
+}
+
+template<typename T>
+void _dx_swap(T& a, T& b)
+{
+    T c = a;
+    a = b;
+    b = c;
 }
