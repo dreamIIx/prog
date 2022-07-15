@@ -28,7 +28,8 @@ else
     UNAME_S := $(shell uname -s)
     ifeq ($(UNAME_S), Linux)
 		CFLAGS = -c -Wall -std=c++20 -ftree-vectorize -mavx
-		LDFLAGS = -lboost_iostreams -lboost_system -lboost_filesystem -lboost_thread
+		LDFLAGS = 
+#			-lboost_iostreams -lboost_system -lboost_filesystem  
 		EXE_vmain1d = ./Debug/vmain1
 		EXE_vmain1 = ./Release/vmain1
 		EXE_vmain2d = ./Debug/vmain2
@@ -162,7 +163,7 @@ $(EXE_emain1): ./Source/emain1.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-$(EXE_emain2d): ./Source/emain2.d.o
+$(EXE_emain2d): ./Source/emain2.d.o 
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
@@ -188,11 +189,11 @@ $(EXE_emain4): ./Source/emain4.o
 
 $(EXE_emain5d): ./Source/emain5.d.o
 	$(info processing......)
-	$(CXX) $(LDFLAGS) $^ -o $@
+	$(CXX) $(LDFLAGS) -lboost_thread $^ -o $@
 
 $(EXE_emain5): ./Source/emain5.o
 	$(info processing......)
-	$(CXX) $(LDFLAGS) $^ -o $@
+	$(CXX) $(LDFLAGS) -lboost_thread $^ -o $@
 
 clean:
 	rm ./Source/*.o
