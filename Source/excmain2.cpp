@@ -68,96 +68,11 @@ struct Polygon
 
 };
 
-struct DataGraphList
-{
-    unsigned distance;
-    ::std::vector<DataGraphList*> neighbors;
-
-    DataGraphList() noexcept(true): distance(-1), neighbors() {}
-
-    ~DataGraphList()
-    {
-        for(size_t i {0}; i < neighbors.size(); ++i)
-        {
-            delete neighbors[i];
-            neighbors[i] = nullptr;
-        }
-    }
-
-    DataGraphList* _spec_createDataGraphList(const ::std::vector<Polygon>& vData, size_t target) const noexcept(false)
-    {
-        DataGraphList* source = new DataGraphList();
-        
-        for(size_t i {0}; i < vData.size(); ++i)
-        {
-            for(size_t j {0}; j < vData[i].dPoints.size(); ++j)
-            {
-
-            }
-        }
-    }
-
-};
-
-unsigned _spec_BFS(::std::vector<Polygon> vPolygon, size_t target)
-{
-    unsigned min_dist_2_target = -1;
-    ::std::queue<size_t> queue;
-    ::std::vector<unsigned> vDist2Polygon(vPolygon.size(), -1);
-    queue.push(target);
-    vDist2Polygon[target] = 0;
-    while(!queue.empty())
-    {
-        size_t cur_idx = queue.front();
-        unsigned current_range = vDist2Polygon[cur_idx] + 1;
-        Polygon cur = vPolygon[cur_idx];
-        queue.pop();
-        for(size_t i {0}; i < cur.dPoints.size(); ++i)
-        {
-            size_t next_i = i < cur.dPoints.size() - 1 ? i + 1 : 0ull;
-            if (((cur.dPoints[i].x != cur.dPoints[next_i].x) || ((cur.dPoints[i].x != 0) && (cur.dPoints[i].x != 100)))
-                && ((cur.dPoints[i].y != cur.dPoints[next_i].y) || ((cur.dPoints[i].y != 0) && (cur.dPoints[i].y != 100))))
-            {
-                for(size_t j {0}; j < vPolygon.size(); ++j)
-                {
-                    if (cur_idx != j)
-                    {
-                        for(size_t k {0}; k < vPolygon[j].dPoints.size(); ++k)
-                        {
-                            size_t prev_k = k > 0 ? k - 1 : vPolygon[j].dPoints.size() - 1;
-                            if (vPolygon[j].dPoints[k] == cur.dPoints[i])
-                            {
-                                if (vPolygon[j].dPoints[prev_k] == cur.dPoints[next_i])
-                                {
-                                    if (vDist2Polygon[j] > current_range)
-                                    {
-                                        vDist2Polygon[j] = current_range;
-                                        queue.push(j);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (min_dist_2_target > current_range)
-                {
-                    if (current_range == 1) return current_range;
-                    min_dist_2_target = current_range;
-                }
-            }
-        }
-    }
-    return min_dist_2_target;
-}
-
 Point intersectionOfRayAndStraight(Point, Vec2d, const Straight&) noexcept(false);
 Point intersectionOfSectionAndStraight(Point, Point, const Straight&) noexcept(false);
 Point intersectionOfRayAndSection(Point, Vec2d, Point, Point) noexcept(false);
 void splitVertexes(const Straight&, ::std::vector<Polygon>&);
+unsigned _spec_BFS(const ::std::vector<Polygon>&, size_t);
 
 int main()
 {
@@ -278,4 +193,59 @@ void splitVertexes(const Straight& line, ::std::vector<Polygon>& vtx)
             }
         }
     }
+}
+
+unsigned _spec_BFS(const ::std::vector<Polygon>& vPolygon, size_t target)
+{
+    unsigned min_dist_2_target = -1;
+    ::std::queue<size_t> queue;
+    ::std::vector<unsigned> vDist2Polygon(vPolygon.size(), -1);
+    queue.push(target);
+    vDist2Polygon[target] = 0;
+    while(!queue.empty())
+    {
+        size_t cur_idx = queue.front();
+        unsigned current_range = vDist2Polygon[cur_idx] + 1;
+        Polygon cur = vPolygon[cur_idx];
+        queue.pop();
+        for(size_t i {0}; i < cur.dPoints.size(); ++i)
+        {
+            size_t next_i = i < cur.dPoints.size() - 1 ? i + 1 : 0ull;
+            if (((cur.dPoints[i].x != cur.dPoints[next_i].x) || ((cur.dPoints[i].x != 0) && (cur.dPoints[i].x != 100)))
+                && ((cur.dPoints[i].y != cur.dPoints[next_i].y) || ((cur.dPoints[i].y != 0) && (cur.dPoints[i].y != 100))))
+            {
+                for(size_t j {0}; j < vPolygon.size(); ++j)
+                {
+                    if (cur_idx != j)
+                    {
+                        for(size_t k {0}; k < vPolygon[j].dPoints.size(); ++k)
+                        {
+                            size_t prev_k = k > 0 ? k - 1 : vPolygon[j].dPoints.size() - 1;
+                            if (vPolygon[j].dPoints[k] == cur.dPoints[i])
+                            {
+                                if (vPolygon[j].dPoints[prev_k] == cur.dPoints[next_i])
+                                {
+                                    if (vDist2Polygon[j] > current_range)
+                                    {
+                                        vDist2Polygon[j] = current_range;
+                                        queue.push(j);
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            else
+            {
+                if (min_dist_2_target > current_range)
+                {
+                    if (current_range == 1) return current_range;
+                    min_dist_2_target = current_range;
+                }
+            }
+        }
+    }
+    return min_dist_2_target;
 }
