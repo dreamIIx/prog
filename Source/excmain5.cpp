@@ -4,6 +4,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <algorithm>
 #include <condition_variable>
 #include <boost/thread.hpp>
 
@@ -154,7 +155,6 @@ public:
 
     void printResultMap()
     {
-        auto result = vvMap;
         ::std::vector<::std::pair<size_t, size_t>> vResList;
         for(size_t y {0}; y < vvResMap.size(); ++y)
         {
@@ -185,17 +185,17 @@ public:
             {
                 for(size_t x {0}; x < vvKernel.back().size(); ++x)
                 {
-                    auto& temp = result[vResList[i].first + y][vResList[i].second + x];
+                    auto& temp = vvMap[vResList[i].first + y][vResList[i].second + x];
                     if      (temp == '0') temp -= 6;
                     else if (temp == '1') ++temp;
                 }
             }
         }
-        for(size_t y {0}; y < result.size(); ++y)
+        for(size_t y {0}; y < vvMap.size(); ++y)
         {
-            for(size_t x {0}; x < result.back().size(); ++x)
+            for(size_t x {0}; x < vvMap.back().size(); ++x)
             {
-                ::std::cout << result[y][x] << ' ';
+                ::std::cout << vvMap[y][x] << ' ';
             }
             ::std::cout << ::std::endl;
         }
@@ -265,7 +265,7 @@ private:
         v.reserve(ay);
         for(size_t y {0}; y < ay; ++y)
         {
-            v.emplace_back(::std::vector<T>());
+            v.emplace_back();
             v.back().reserve(ax);
             for(size_t x {0}; x < ax; ++x)
             {
