@@ -26,7 +26,7 @@ struct piz_data
 
 };
 
-void incresePizzeria(::std::vector<piz_data>&, ::std::vector<int>&, int&, int, int);
+void increasePizzeria(::std::vector<piz_data>&, ::std::vector<int>&, int&, int, int);
 
 int main()
 {
@@ -90,7 +90,7 @@ int main()
                     }
                     if (nChallengers == 1ull)
                     {
-                        incresePizzeria(vPizzeria, vCellInfo, total_cap, x, y);
+                        increasePizzeria(vPizzeria, vCellInfo, total_cap, x, y);
                         is_idle = false;
                     }
                     else if (nChallengers)
@@ -110,8 +110,8 @@ int main()
                         {
                             if (vMapInfo[i].second == 2ull)
                             {
-                                incresePizzeria(vPizzeria, vMapInfo[i].first.second, total_cap, vMapInfo[i].first.first.x, vMapInfo[i].first.first.y);
-                                incresePizzeria(vPizzeria, vMapInfo[i].first.second, total_cap, vMapInfo[j].first.first.x, vMapInfo[j].first.first.y);
+                                increasePizzeria(vPizzeria, vMapInfo[i].first.second, total_cap, vMapInfo[i].first.first.x, vMapInfo[i].first.first.y);
+                                increasePizzeria(vPizzeria, vMapInfo[i].first.second, total_cap, vMapInfo[j].first.first.x, vMapInfo[j].first.first.y);
                                 vMapInfo.erase(vMapInfo.begin() + j);
                                 vMapInfo.erase(vMapInfo.begin() + i);
                             }
@@ -138,7 +138,7 @@ int main()
     return 0;
 }
 
-void incresePizzeria(::std::vector<piz_data>& piz, ::std::vector<int>& cellinf, int& totlcap, int x, int y)
+void increasePizzeria(::std::vector<piz_data>& piz, ::std::vector<int>& cellinf, int& totlcap, int x, int y)
 {
     for (size_t i {0}; i < cellinf.size(); ++i)
     {
