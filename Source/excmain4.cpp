@@ -149,79 +149,19 @@ int main()
             updateMap(vMap, ax - 1, ay - 1, map_x, map_y, &vPizzeria[i].get(), &vPizzeria[i].get(), &vPizzeria[i].get(), &vPizzeria[i].get());
         }
 
-        bool is_idle = false;
-        while(!is_idle)
-        {
-            is_idle = true;
-            for(auto& y : vMap)
-            {
-                for(auto& x : y)
-                {
-                    if (x.is == spec_point<piz_data>::state::undef)
-                    {
-                        size_t count_free_directions = 0ull;
-                        size_t target_direction = -1;
-                        for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
-                        {
-                            if (x.targetDir[i])
-                            {
-                                if (x.targetDir[i]->cap <= x.lengthDir[i]) ++count_free_directions;
-                                else target_direction = i;
-                            }
-                            else ++count_free_directions;
-                        }
-                        if (count_free_directions == 3ull)
-                        {
-                            unsigned chage_range = x.lengthDir[target_direction] + 1;
-                            auto& target = *x.targetDir[target_direction];
-                            size_t rtd = (target_direction - 2) % 4;
-                            for(size_t i {1}; i <= chage_range; ++i)
-                            {
-                                updateMap(vMap,
-                                    static_cast<ptrdiff_t>(target.crd.x) + (rtd & 1 ? (rtd == 1 ? -target.dir[rtd] - i : target.dir[rtd] + i) : 0),
-                                    static_cast<ptrdiff_t>(target.crd.y) + (rtd & 1 ? 0 : (rtd ? target.dir[rtd] + i : -target.dir[rtd] - i)),
-                                    map_x, map_y,
-                                    static_cast<piz_data*>(target_direction == 0 ? &target : nullptr),
-                                    static_cast<piz_data*>(target_direction == 1 ? &target : nullptr),
-                                    static_cast<piz_data*>(target_direction == 2 ? &target : nullptr),
-                                    static_cast<piz_data*>(target_direction == 3 ? &target : nullptr));
-                            }
-                            target.dir[rtd] += chage_range;
-                            target.cap -= chage_range;
-                            for(auto& y : vMap)
-                            {
-                                for(auto& x : y)
-                                {
-                                    ::std::cout << (x.is == spec_point<piz_data>::state::def ? 1 : 0);
-                                }
-                                ::std::cout << std::endl;
-                            }
-                            ::std::cout << "--------" << std::endl;
-                            is_idle = false;
-                        }
-                    }
-                }
-            }
-        }
-
         auto start_it = vPizzeria.begin();
-        ::std::sort(start_it, vPizzeria.end(),
-            [](const piz_data& a, const piz_data& b) -> bool
-            {
-                return a.cap > b.cap;
-            });
-        auto end_it = ::std::partition(vPizzeria.begin(), vPizzeria.end(), [](const piz_data& a) -> bool { return a.cap != 0u; });
+        auto end_it = vPizzeria.end();
         
         for(auto iter_main = start_it; iter_main != end_it;)
         {
-            for(auto& y : vMap)
+            /*for(auto& y : vMap)
             {
                 for(auto& x : y)
                 {
                     ::std::cout << (x.is == spec_point<piz_data>::state::def ? 1 : 0);
                 }
                 ::std::cout << std::endl;
-            }
+            }*/
 
             for(auto iter = start_it; iter != end_it; ++iter)
             {
@@ -240,6 +180,67 @@ int main()
                     return (static_cast<double>(a.potential) / a.cap < static_cast<double>(b.potential) / b.cap) ||
                         (static_cast<double>(a.potential) / a.cap - static_cast<double>(b.potential) / b.cap < 1e-7 && a.cap > b.cap);
                 });
+
+            bool is_idle = false;
+            while(!is_idle)
+            {
+                is_idle = true;
+                for(auto& y : vMap)
+                {
+                    for(auto& x : y)
+                    {
+                        if (x.is == spec_point<piz_data>::state::undef)
+                        {
+                            size_t count_free_directions = 0ull;
+                            size_t target_direction = -1;
+                            for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
+                            {
+                                if (x.targetDir[i])
+                                {
+                                    if (x.targetDir[i]->cap <= x.lengthDir[i]) ++count_free_directions;
+                                    else target_direction = i;
+                                }
+                                else ++count_free_directions;
+                            }
+                            if (count_free_directions == 3ull)
+                            {
+                                unsigned chage_range = x.lengthDir[target_direction] + 1;
+                                auto& target = *x.targetDir[target_direction];
+                                size_t rtd = (target_direction - 2) % 4;
+                                for(size_t i {1}; i <= chage_range; ++i)
+                                {
+                                    updateMap(vMap,
+                                        static_cast<ptrdiff_t>(target.crd.x) + (rtd & 1 ? (rtd == 1 ? -target.dir[rtd] - i : target.dir[rtd] + i) : 0),
+                                        static_cast<ptrdiff_t>(target.crd.y) + (rtd & 1 ? 0 : (rtd ? target.dir[rtd] + i : -target.dir[rtd] - i)),
+                                        map_x, map_y,
+                                        static_cast<piz_data*>(target_direction == 0 ? &target : nullptr),
+                                        static_cast<piz_data*>(target_direction == 1 ? &target : nullptr),
+                                        static_cast<piz_data*>(target_direction == 2 ? &target : nullptr),
+                                        static_cast<piz_data*>(target_direction == 3 ? &target : nullptr));
+                                }
+                                target.dir[rtd] += chage_range;
+                                target.cap -= chage_range;
+                                /*for(auto& y : vMap)
+                                {
+                                    for(auto& x : y)
+                                    {
+                                        ::std::cout << (x.is == spec_point<piz_data>::state::def ? 1 : 0);
+                                    }
+                                    ::std::cout << std::endl;
+                                }
+                                ::std::cout << "--------" << std::endl;*/
+                                is_idle = false;
+                            }
+                        }
+                    }
+                }
+            }
+            ::std::stable_sort(start_it, vPizzeria.end(),
+                [](const piz_data& a, const piz_data& b) -> bool
+                {
+                    return (a.cap > b.cap && b.cap == 0) || (a.cap < b.cap && a.cap == 0);
+                });
+            end_it = ::std::partition(vPizzeria.begin(), vPizzeria.end(), [](const piz_data& a) -> bool { return a.cap != 0u; });
             
             auto it = ::std::partition(start_it, end_it,
                 [&](const piz_data& a) -> bool
@@ -288,7 +289,7 @@ int main()
                             {
                                 return a.first < b.first || (a.first == b.first && a.second < b.second - 1e-7);
                             });
-                    ::std::cout << it_min - vInfo.begin() << ::std::endl;
+                    //::std::cout << it_min - vInfo.begin() << ::std::endl;
                     ++vCurPath[it_min - vInfo.begin()];
                     ++temp.dir[it_min - vInfo.begin()];
                     --temp.cap;
@@ -303,23 +304,26 @@ int main()
                 }
             }
             
-            for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
+            if (piz_idx != -1)
             {
-                for(size_t j {1}; j <= vPath[i]; ++j)
+                for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
                 {
-                    updateMap(vMap,
-                        static_cast<ptrdiff_t>(vPizzeria[piz_idx].get().crd.x) +
-                            (i & 1 ? (i == 1 ? -vPizzeria[piz_idx].get().dir[i] - j : vPizzeria[piz_idx].get().dir[i] + j) : 0),
-                        static_cast<ptrdiff_t>(vPizzeria[piz_idx].get().crd.y) +
-                            (i & 1 ? 0 : (i ? vPizzeria[piz_idx].get().dir[i] + j : -vPizzeria[piz_idx].get().dir[i] - j)),
-                        map_x, map_y,
-                        static_cast<piz_data*>(nullptr), static_cast<piz_data*>(nullptr), static_cast<piz_data*>(nullptr), static_cast<piz_data*>(nullptr));
+                    for(size_t j {1}; j <= vPath[i]; ++j)
+                    {
+                        updateMap(vMap,
+                            static_cast<ptrdiff_t>(vPizzeria[piz_idx].get().crd.x) +
+                                (i & 1 ? (i == 1 ? -vPizzeria[piz_idx].get().dir[i] - j : vPizzeria[piz_idx].get().dir[i] + j) : 0),
+                            static_cast<ptrdiff_t>(vPizzeria[piz_idx].get().crd.y) +
+                                (i & 1 ? 0 : (i ? vPizzeria[piz_idx].get().dir[i] + j : -vPizzeria[piz_idx].get().dir[i] - j)),
+                            map_x, map_y,
+                            static_cast<piz_data*>(nullptr), static_cast<piz_data*>(nullptr), static_cast<piz_data*>(nullptr), static_cast<piz_data*>(nullptr));
+                    }
+                    vPizzeria[piz_idx].get().dir[i] += vPath[i];
+                    vPizzeria[piz_idx].get().cap -= vPath[i];
                 }
-                vPizzeria[piz_idx].get().dir[i] += vPath[i];
-                vPizzeria[piz_idx].get().cap -= vPath[i];
+                ::std::swap(vPizzeria[piz_idx], *(end_it - 1));
+                --end_it;
             }
-            ::std::swap(vPizzeria[piz_idx], *(end_it - 1));
-            --end_it;
         }
         
         ::std::sort(vPizzeria.begin(), vPizzeria.end(), [](const piz_data& a, const piz_data& b) -> bool { return a.n < b.n; });
