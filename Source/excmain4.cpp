@@ -154,15 +154,6 @@ int main()
         
         for(auto iter_main = start_it; iter_main != end_it;)
         {
-            /*for(auto& y : vMap)
-            {
-                for(auto& x : y)
-                {
-                    ::std::cout << (x.is == spec_point<piz_data>::state::def ? 1 : 0);
-                }
-                ::std::cout << std::endl;
-            }*/
-
             for(auto iter = start_it; iter != end_it; ++iter)
             {
                 iter->get().potential = 0u;
@@ -220,15 +211,6 @@ int main()
                                 }
                                 target.dir[rtd] += chage_range;
                                 target.cap -= chage_range;
-                                /*for(auto& y : vMap)
-                                {
-                                    for(auto& x : y)
-                                    {
-                                        ::std::cout << (x.is == spec_point<piz_data>::state::def ? 1 : 0);
-                                    }
-                                    ::std::cout << std::endl;
-                                }
-                                ::std::cout << "--------" << std::endl;*/
                                 is_idle = false;
                             }
                         }
@@ -289,7 +271,6 @@ int main()
                             {
                                 return a.first < b.first || (a.first == b.first && a.second < b.second - 1e-7);
                             });
-                    //::std::cout << it_min - vInfo.begin() << ::std::endl;
                     ++vCurPath[it_min - vInfo.begin()];
                     ++temp.dir[it_min - vInfo.begin()];
                     --temp.cap;
