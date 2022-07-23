@@ -217,12 +217,12 @@ int main()
                     }
                 }
             }
-            ::std::stable_sort(start_it, vPizzeria.end(),
+            ::std::stable_sort(vPizzeria.begin(), end_it,
                 [](const piz_data& a, const piz_data& b) -> bool
                 {
                     return (a.cap > b.cap && b.cap == 0) || (a.cap < b.cap && a.cap == 0);
                 });
-            end_it = ::std::partition(vPizzeria.begin(), vPizzeria.end(), [](const piz_data& a) -> bool { return a.cap != 0u; });
+            end_it = ::std::partition(vPizzeria.begin(), end_it, [](const piz_data& a) -> bool { return a.cap != 0u; });
             
             auto it = ::std::partition(start_it, end_it,
                 [&](const piz_data& a) -> bool
