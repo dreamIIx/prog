@@ -154,15 +154,6 @@ int main()
         
         for(auto iter_main = start_it; iter_main != end_it;)
         {
-            /*for(auto& y : vMap)
-            {
-                for(auto& x : y)
-                {
-                    ::std::cout << (x.is == spec_point<piz_data>::state::def ? 1 : 0);
-                }
-                ::std::cout << std::endl;
-            }*/
-
             for(auto iter = start_it; iter != end_it; ++iter)
             {
                 iter->get().potential = 0u;
@@ -220,27 +211,18 @@ int main()
                                 }
                                 target.dir[rtd] += chage_range;
                                 target.cap -= chage_range;
-                                /*for(auto& y : vMap)
-                                {
-                                    for(auto& x : y)
-                                    {
-                                        ::std::cout << (x.is == spec_point<piz_data>::state::def ? 1 : 0);
-                                    }
-                                    ::std::cout << std::endl;
-                                }
-                                ::std::cout << "--------" << std::endl;*/
                                 is_idle = false;
                             }
                         }
                     }
                 }
             }
-            ::std::stable_sort(start_it, vPizzeria.end(),
+            ::std::stable_sort(vPizzeria.begin(), end_it,
                 [](const piz_data& a, const piz_data& b) -> bool
                 {
                     return (a.cap > b.cap && b.cap == 0) || (a.cap < b.cap && a.cap == 0);
                 });
-            end_it = ::std::partition(vPizzeria.begin(), vPizzeria.end(), [](const piz_data& a) -> bool { return a.cap != 0u; });
+            end_it = ::std::partition(vPizzeria.begin(), end_it, [](const piz_data& a) -> bool { return a.cap != 0u; });
             
             auto it = ::std::partition(start_it, end_it,
                 [&](const piz_data& a) -> bool
@@ -289,7 +271,6 @@ int main()
                             {
                                 return a.first < b.first || (a.first == b.first && a.second < b.second - 1e-7);
                             });
-                    //::std::cout << it_min - vInfo.begin() << ::std::endl;
                     ++vCurPath[it_min - vInfo.begin()];
                     ++temp.dir[it_min - vInfo.begin()];
                     --temp.cap;
