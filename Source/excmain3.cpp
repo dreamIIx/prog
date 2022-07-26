@@ -92,7 +92,7 @@ void concatClustersRowByRow(udata_t, vCluster_t&, vCluster_t&, udata_t, clr_idx)
 inline udata_t decrease_to_1(udata_t);
 inline udata_t decrease_at_least_to_1(udata_t);
 udata_t sumOfClusters(vCluster_t);
-inline char getColorByIndex(clr_idx);
+inline const char getColorByIndex(clr_idx);
 udata_t deleteClustersByIntersectionRow(udata_t&, udata_t);
 void shiftClusters(udata_t[][_Y_]);
 
@@ -202,8 +202,8 @@ int main()
 void makeClustersByRow(udata_t row, vCluster_t& cl, udata_t prev_y)
 {
     bool found = false;
-    size_t first = 0;
-    size_t second = 0;
+    size_t first = 0ull;
+    size_t second;
     for(size_t x {0}; x < _X_; ++x)
     {
         if (GETBIT(row, _X_ - 1 - x))
@@ -235,7 +235,6 @@ void makeClustersByRow(udata_t row, vCluster_t& cl, udata_t prev_y)
         cl.back().first = ((row << (_SHFT2_X_ + first)) >> (_SHFT2_X_ + first + (_X_ - second))) << (_X_ - second);
         cl.back().second |= decrease_at_least_to_1(cl.back().first) << sz_HALF_INT_TYPE_;
         cl.back().second |= prev_y << sz_3_QUARTERS_INT_TYPE_;
-        found = false;
     }
 }
 
@@ -245,7 +244,7 @@ void concatClustersRowByRow(udata_t row, vCluster_t& cl, vCluster_t& whole_cl, u
     makeClustersByRow(row, new_cl, prev_y);
     for(ptrdiff_t i {0}; i < cl.size(); ++i)
     {
-        udata_t temp = 0;
+        udata_t temp = 0u;
         for(size_t j {0}; j < new_cl.size(); ++j)
         {
             if (cl[i].first & new_cl[j].first)
@@ -334,9 +333,9 @@ udata_t sumOfClusters(vCluster_t cl)
     return res;
 }
 
-inline char getColorByIndex(clr_idx x)
+inline const char getColorByIndex(clr_idx x)
 {
-    char static_table[_DIM_]{ 'R', 'G', 'B' };
+    const char static_table[_DIM_]{ 'R', 'G', 'B' };
     return static_table[x];
 }
 
@@ -403,14 +402,14 @@ void shiftClusters(udata_t data[][_Y_])
                 data_t upper_pos = decrease_at_least_to_1(vMap_X_clusters[i].first) + _Y_ - _y_;
                 for(size_t y {_Y_ - _y_}; y < upper_pos; ++y)
                 {
-                    for(size_t i {0}; i < 3ull; ++i)
+                    for(size_t j {0}; j < 3ull; ++j)
                     {
-                        if (GETBIT(data[i][upper_pos - y - 1], _X_ - 1 - x))
+                        if (GETBIT(data[j][upper_pos - y - 1], _X_ - 1 - x))
                         {
-                            SETBIT(data[i][lower_pos - y], _X_ - 1 - x);
-                            UNSETBIT(data[(i + 1) % 3][lower_pos - y], _X_ - 1 - x);
-                            UNSETBIT(data[(i + 2) % 3][lower_pos - y], _X_ - 1 - x);
-                            UNSETBIT(data[i][upper_pos - y - 1], _X_ - 1 - x);
+                            SETBIT(data[j][lower_pos - y], _X_ - 1 - x);
+                            UNSETBIT(data[(j + 1) % 3][lower_pos - y], _X_ - 1 - x);
+                            UNSETBIT(data[(j + 2) % 3][lower_pos - y], _X_ - 1 - x);
+                            UNSETBIT(data[j][upper_pos - y - 1], _X_ - 1 - x);
                             break;
                         }
                     }
