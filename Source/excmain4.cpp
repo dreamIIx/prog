@@ -128,10 +128,7 @@ int main()
                 vMap[y][x].lengthDir[1] = x;
                 vMap[y][x].lengthDir[2] = map_y - y - 1;
                 vMap[y][x].lengthDir[3] = map_x - x - 1;
-                for(auto& i : vMap[y][x].targetDir)
-                {
-                    i = nullptr;
-                }
+                ::std::fill(vMap[y][x].targetDir.begin(), vMap[y][x].targetDir.end(), nullptr);
             }
         }
         for(size_t i {0}; i < pcount; ++i)
@@ -242,8 +239,8 @@ int main()
                     ::std::vector<::std::pair<unsigned, double>> vInfo(CNT_DIRECTIONS, ::std::make_pair(0u, -1.));
                     for(size_t c {0}; c < CNT_DIRECTIONS; ++c)
                     {
-                        int cur_y = static_cast<ptrdiff_t>(temp.crd.y) + (c & 1 ? 0 : (temp.dir[c] + 1) * (c ? 1 : -1));
-                        int cur_x = static_cast<ptrdiff_t>(temp.crd.x) + (c & 1 ? (temp.dir[c] + 1) * (c == 1 ? -1 : 1) : 0);
+                        int cur_y = static_cast<ptrdiff_t>(temp.crd.y) + (c & 1 ? 0 : static_cast<ptrdiff_t>(temp.dir[c] + 1) * (c ? 1 : -1));
+                        int cur_x = static_cast<ptrdiff_t>(temp.crd.x) + (c & 1 ? static_cast<ptrdiff_t>(temp.dir[c] + 1) * (c == 1 ? -1 : 1) : 0);
                         if (cur_x < 0 || cur_x >= map_x || cur_y < 0 || cur_y >= map_y || vMap[cur_y][cur_x].is == spec_point<piz_data>::state::def)
                         {
                             vInfo[c].first = -1;

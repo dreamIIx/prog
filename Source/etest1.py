@@ -7,12 +7,12 @@ with open("output.txt", "w") as f:
         station = []
         output_array = []
         while len(array) != 0:
-            that_time = random.randint(1, 100 if int(len(array) / 2) > 100 else len(array))
-            station += array[0: that_time]
-            array = array[that_time:]
+            this_time = random.randint(1, 100 if int(len(array) / 2) > 100 else len(array))
+            station += array[0: this_time]
+            array = array[this_time:]
             if random.randint(0, 1) == 0:
-                that_time = random.randint(1, len(station))
-                for i in " " * that_time:
+                this_time = random.randint(1, len(station))
+                for i in " " * this_time:
                     output_array.append(station.pop())
         for i in range(len(station)):
             output_array.append(station.pop())
