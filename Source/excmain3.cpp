@@ -175,41 +175,6 @@ int main()
 
         while(vClusters.size() && (vClusters.front().second << sz_HALF_INT_TYPE_) >> sz_HALF_INT_TYPE_ != 1)
         {
-            for(size_t yy {0}; yy < _Y_; ++yy)
-            {
-                for(size_t xx {0}; xx < _X_; ++xx)
-                {
-                    bool yeh = false;
-                    for(size_t i {0}; i < _DIM_; ++i)
-                    {
-                        if (GETBIT(Data[i][yy], xx))
-                        {
-                            switch(i)
-                            {
-                            case 0:
-                            {
-                                ::std::cout << 'R';
-                                break;
-                            }
-                            case 1:
-                            {
-                                ::std::cout << 'G';
-                                break;
-                            }
-                            case 2:
-                            {
-                                ::std::cout << 'B';
-                                break;
-                            }
-                            }
-                            yeh = true;
-                            break;
-                        }
-                    }
-                    if (!yeh)   ::std::cout << ' ';
-                }
-                ::std::cout << ::std::endl;
-            }
             //size_t row_i = 1ull;
             ptrdiff_t cur_yota = -1ll;
             ptrdiff_t cur_idx = ((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) + cur_yota;
@@ -424,8 +389,6 @@ void shiftClusters(udata_t data[][_Y_])
     }
     for(size_t x {0}; x < _X_; ++x)
     {
-        //::std::cout << ::std::bitset<10ull>(map[x]) << ::std::endl;
-        //::std::cout << ::std::bitset<10ull>(((1 << _y_) - 1) << (_Y_ - _y_)) << ::std::endl;
         if (map[x] == ((1 << _y_) - 1) << (_Y_ - _y_))
         {
             for(size_t y = {_Y_ - _y_}; y < _Y_; ++y)
