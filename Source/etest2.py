@@ -5,7 +5,7 @@ file = open('current_test.txt', 'w')
 answ_file = open('current_test_answer.txt', 'w')
 
 random.seed()
-n = random.randint(5, 30)
+n = random.randint(5, 15)
 file.write(str(n) + '\n')
 v = []
 v.append([0, 0, 0, 100])

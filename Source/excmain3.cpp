@@ -75,7 +75,7 @@ constexpr size_t sz_3_QUARTERS_INT_TYPE_	=	(sz_HALF_INT_TYPE_ + sz_QUARTER_INT_T
 // shifts
 constexpr size_t _SHFT2_X_					=	(sizeof(udata_t) * __CHAR_BIT__ - _X_);
 
-ptrdiff_t _y_ = _Y_;
+ptrdiff_t _y_;
 
 using cluster_t = ::std::pair<udata_t, udata_t>;
 using vCluster_t = ::std::vector<cluster_t>;
@@ -106,7 +106,6 @@ int main()
 
     for(size_t loop {0}; loop < count_loop; ++loop)
     {
-        ::std::cout << "Game " << loop + 1 << ':' << ::std::endl;
         udata_t Data[_DIM_][_Y_]{0u};
         _y_ = _Y_;
         for(size_t y {0}; y < _Y_; ++y)
@@ -133,6 +132,7 @@ int main()
                 }
             }
         }
+        ::std::cout << "Game " << loop + 1 << ':' << ::std::endl;
 
         size_t score = 0ull;
         size_t moveNum = 1ull;
@@ -175,12 +175,24 @@ int main()
 
         while(vClusters.size() && (vClusters.front().second << sz_HALF_INT_TYPE_) >> sz_HALF_INT_TYPE_ != 1)
         {
-            size_t row_i = 1ull;
-            udata_t data_tersect = vClusters.front().first & Data[vClusters.front().first >> sz_3_QUARTERS_INT_TYPE_][((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) - row_i];
-            while(data_tersect)
+            //size_t row_i = 1ull;
+            ptrdiff_t cur_yota = -1ll;
+            ptrdiff_t cur_idx = ((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) + cur_yota;
+            size_t cur_color = vClusters.front().first >> sz_3_QUARTERS_INT_TYPE_;
+            udata_t data_intersect = vClusters.front().first & Data[cur_color][cur_idx];
+            while(data_intersect)
             {
-                data_tersect = deleteClustersByIntersectionRow(Data[vClusters.front().first >> sz_3_QUARTERS_INT_TYPE_][((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) - row_i++], data_tersect);
-                data_tersect &= Data[vClusters.front().first >> sz_3_QUARTERS_INT_TYPE_][((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) - row_i];
+                data_intersect = deleteClustersByIntersectionRow(Data[cur_color][cur_idx], data_intersect);
+                if      (cur_idx == 0)  cur_yota = 1ll;
+                else if (cur_idx == 9)  cur_yota = -1ll;
+                cur_idx += cur_yota;
+                data_intersect &= Data[cur_color][cur_idx];
+                if (!data_intersect)
+                {
+                    cur_yota *= -1ll;
+                    cur_idx += 2 * cur_yota;
+                    if (cur_idx >= 0 && cur_idx < 10)   data_intersect &= Data[cur_color][cur_idx];
+                }
             }
             shiftClusters(Data);
             size_t delt_score = static_cast<udata_t>(::std::pow(((vClusters.front().second << sz_HALF_INT_TYPE_) >> sz_HALF_INT_TYPE_) - 2, 2u));
@@ -361,12 +373,11 @@ void shiftClusters(udata_t data[][_Y_])
 {
     udata_t map[_X_]{0u};
     bool flag = true;
-    for(ptrdiff_t y {_Y_ - _y_ + 1}; y < _Y_; ++y)
+    for(ptrdiff_t y {_Y_ - _y_}; y < _Y_; ++y)
     {
-        udata_t temp_y = (~(data[0][y] ^ data[1][y] ^ data[2][y]) << (_SHFT2_X_ + (_X_ - _X_))) >> (_SHFT2_X_ + (_X_ - _X_));
+        udata_t temp_y = (~(data[0][y] ^ data[1][y] ^ data[2][y]) << (_SHFT2_X_)) >> (_SHFT2_X_);
         if ((temp_y == ((1 << _X_) - 1)) && flag)
         {
-            if (_y_ == 10) --_y_;
             --_y_;
             continue;
         }
@@ -378,11 +389,11 @@ void shiftClusters(udata_t data[][_Y_])
     }
     for(size_t x {0}; x < _X_; ++x)
     {
-        if (map[x] == ((1 << _y_) - 2) << (_Y_ - _y_))
+        if (map[x] == ((1 << _y_) - 1) << (_Y_ - _y_))
         {
             for(size_t y = {_Y_ - _y_}; y < _Y_; ++y)
             {
-                for(size_t i {0}; i < 3ull; ++i)
+                for(size_t i {0}; i < _DIM_; ++i)
                 {
                     if (data[i][y])
                     {
@@ -402,13 +413,13 @@ void shiftClusters(udata_t data[][_Y_])
                 data_t upper_pos = decrease_at_least_to_1(vMap_X_clusters[i].first) + _Y_ - _y_;
                 for(size_t y {_Y_ - _y_}; y < upper_pos; ++y)
                 {
-                    for(size_t j {0}; j < 3ull; ++j)
+                    for(size_t j {0}; j < _DIM_; ++j)
                     {
                         if (GETBIT(data[j][upper_pos - y - 1], _X_ - 1 - x))
                         {
                             SETBIT(data[j][lower_pos - y], _X_ - 1 - x);
-                            UNSETBIT(data[(j + 1) % 3][lower_pos - y], _X_ - 1 - x);
-                            UNSETBIT(data[(j + 2) % 3][lower_pos - y], _X_ - 1 - x);
+                            UNSETBIT(data[(j + 1) % _DIM_][lower_pos - y], _X_ - 1 - x);
+                            UNSETBIT(data[(j + 2) % _DIM_][lower_pos - y], _X_ - 1 - x);
                             UNSETBIT(data[j][upper_pos - y - 1], _X_ - 1 - x);
                             break;
                         }

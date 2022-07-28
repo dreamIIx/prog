@@ -92,8 +92,8 @@ struct spec_point
     state is;
 
     // 0 - n
-    // 1 - s
-    // 2 - w
+    // 1 - w
+    // 2 - s
     // 3 - e
     ::std::array<unsigned, CNT_DIRECTIONS> lengthDir;
     ::std::array<T*, CNT_DIRECTIONS> targetDir;
@@ -214,6 +214,7 @@ int main()
                     }
                 }
             }
+
             ::std::stable_sort(vPizzeria.begin(), end_it,
                 [](const piz_data& a, const piz_data& b) -> bool
                 {
@@ -221,22 +222,27 @@ int main()
                 });
             end_it = ::std::partition(vPizzeria.begin(), end_it, [](const piz_data& a) -> bool { return a.cap != 0u; });
             
-            auto it = ::std::partition(start_it, end_it,
+            /*auto it = ::std::partition(start_it, end_it,
                 [&](const piz_data& a) -> bool
                     { return ((static_cast<double>(a.potential) / a.cap - static_cast<double>(vPizzeria.front().get().potential) / vPizzeria.front().get().cap) < 1e-7) &&
-                        (a.cap == vPizzeria.front().get().cap); });
+                        (a.cap == vPizzeria.front().get().cap); });*/
+            auto it = end_it;
 
             ::std::vector<unsigned> vPath(CNT_DIRECTIONS, 0u);
-            ::std::pair<unsigned, double> decr = ::std::make_pair(-1, -1.);
+            //::std::pair<unsigned, double> decr = ::std::make_pair(-1, -1.);
+            ::std::pair<unsigned, double> decr = ::std::make_pair(-1, ::std::numeric_limits<double>::max());
             size_t piz_idx = -1;
+            //::std::cout << "it - start_it: " << it - start_it << ::std::endl;
             for(auto iter = start_it; iter != it; ++iter)
             {
                 ::std::vector<unsigned> vCurPath(CNT_DIRECTIONS, 0u);
-                ::std::pair<unsigned, double> cur_decr = ::std::make_pair(0u, -1.);
+                //::std::pair<unsigned, double> cur_decr = ::std::make_pair(0u, -1.);
+                ::std::pair<unsigned, double> cur_decr = ::std::make_pair(0u, 0.);
                 piz_data temp = *iter;
                 while(temp.cap)
                 {
-                    ::std::vector<::std::pair<unsigned, double>> vInfo(CNT_DIRECTIONS, ::std::make_pair(0u, -1.));
+                    //::std::vector<::std::pair<unsigned, double>> vInfo(CNT_DIRECTIONS, ::std::make_pair(0u, -1.));
+                    ::std::vector<::std::pair<unsigned, double>> vInfo(CNT_DIRECTIONS, ::std::make_pair(0u, 0.));
                     for(size_t c {0}; c < CNT_DIRECTIONS; ++c)
                     {
                         int cur_y = static_cast<ptrdiff_t>(temp.crd.y) + (c & 1 ? 0 : static_cast<ptrdiff_t>(temp.dir[c] + 1) * (c ? 1 : -1));
@@ -258,7 +264,8 @@ int main()
                                 {
                                     vInfo[c].first += diff;
                                     double temp_kf = (static_cast<double>(diff) / vMap[cur_y][cur_x].targetDir[k]->potential) * vMap[cur_y][cur_x].targetDir[k]->cap;
-                                    if (vInfo[c].second < temp_kf) vInfo[c].second = temp_kf;
+                                    //if (vInfo[c].second < temp_kf) vInfo[c].second = temp_kf;
+                                    vInfo[c].second += temp_kf;
                                 }
                             }
                         }
@@ -267,14 +274,17 @@ int main()
                         [](const ::std::pair<unsigned, double>& a, const ::std::pair<unsigned, double>& b) -> bool
                             {
                                 return a.first < b.first || (a.first == b.first && a.second < b.second - 1e-7);
+                                //return a.second < b.second - 1e-7 || (a.second - b.second < 1e-7 && a.first < b.first);
                             });
                     ++vCurPath[it_min - vInfo.begin()];
                     ++temp.dir[it_min - vInfo.begin()];
                     --temp.cap;
                     cur_decr.first += it_min->first;
-                    if (cur_decr.second < it_min->second) cur_decr.second = it_min->second;
+                    //if (cur_decr.second < it_min->second) cur_decr.second = it_min->second;
+                    cur_decr.second += it_min->second;
                 }
-                if (cur_decr.first < decr.first || (cur_decr.first == decr.first && cur_decr.second < decr.second))
+                //if (cur_decr.first < decr.first || (cur_decr.first == decr.first && cur_decr.second < decr.second))
+                if (cur_decr.second < decr.second - 1e-7 || (cur_decr.second - decr.second < 1e-7 && cur_decr.first < decr.first))
                 {
                     ::std::copy(vCurPath.begin(), vCurPath.end(), vPath.begin());
                     decr = cur_decr;

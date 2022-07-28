@@ -155,12 +155,12 @@ public:
 
     void printResultMap()
     {
-        ::std::vector<::std::pair<size_t, size_t>> vResList;
+        ::std::vector<::std::pair<ptrdiff_t, ptrdiff_t>> vResList;
         for(size_t y {0}; y < vvResMap.size(); ++y)
         {
-            for(size_t x {0}; x < vvResMap.size(); ++x)
+            for(size_t x {0}; x < vvResMap.back().size(); ++x)
             {
-                if (vvResMap[y][x])
+                if (static_cast<int>(vvResMap[y][x]))
                 {
                     vResList.reserve(vResList.capacity() + 1);
                     vResList.emplace_back(::std::make_pair(y, x));
@@ -173,9 +173,9 @@ public:
             {
                 auto& _s = vResList[i];
                 auto& _t = vResList[j];
-                size_t _y = vvKernel.size();
-                size_t _x = vvKernel.back().size();
-                if (!(_t.first >= _s.first + _y || _t.second >= _s.second + _x || _t.second <= _s.second - _x))
+                ptrdiff_t _y = vvKernel.size();
+                ptrdiff_t _x = vvKernel.back().size();
+                if (_t.first < _s.first + _y && _t.second < _s.second + _x && _t.second > _s.second - _x)
                 {
                     vResList.erase(vResList.begin() + j);
                     --j;
