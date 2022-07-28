@@ -35,7 +35,7 @@ for y in range(map_y - kernel_y + 1):
         for ky in range(kernel_y):
             if recognized == 1:
                 for kx in range(kernel_x):
-                    if kernel[ky][kx] != map[y + ky][x + kx]:
+                    if kernel[ky][kx] != res_map[y + ky][x + kx]:
                         recognized = 0
                         break
             else:
@@ -43,7 +43,7 @@ for y in range(map_y - kernel_y + 1):
         if recognized == 1:
             for ky2 in range(kernel_y):
                 for kx2 in range(kernel_x):
-                    if map[y + ky2][x + kx2] == '0':
+                    if res_map[y + ky2][x + kx2] == '0':
                         res_map[y + ky2][x + kx2] = '*'
                     else:
                         res_map[y + ky2][x + kx2] = '2'

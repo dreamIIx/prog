@@ -106,7 +106,6 @@ int main()
 
     for(size_t loop {0}; loop < count_loop; ++loop)
     {
-        ::std::cout << "Game " << loop + 1 << ':' << ::std::endl;
         udata_t Data[_DIM_][_Y_]{0u};
         _y_ = _Y_;
         for(size_t y {0}; y < _Y_; ++y)
@@ -133,6 +132,7 @@ int main()
                 }
             }
         }
+        ::std::cout << "Game " << loop + 1 << ':' << ::std::endl;
 
         size_t score = 0ull;
         size_t moveNum = 1ull;
@@ -175,12 +175,24 @@ int main()
 
         while(vClusters.size() && (vClusters.front().second << sz_HALF_INT_TYPE_) >> sz_HALF_INT_TYPE_ != 1)
         {
-            size_t row_i = 1ull;
-            udata_t data_tersect = vClusters.front().first & Data[vClusters.front().first >> sz_3_QUARTERS_INT_TYPE_][((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) - row_i];
-            while(data_tersect)
+            //size_t row_i = 1ull;
+            ptrdiff_t cur_yota = -1ll;
+            ptrdiff_t cur_idx = ((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) + cur_yota;
+            size_t cur_color = vClusters.front().first >> sz_3_QUARTERS_INT_TYPE_;
+            udata_t data_intersect = vClusters.front().first & Data[cur_color][cur_idx];
+            while(data_intersect)
             {
-                data_tersect = deleteClustersByIntersectionRow(Data[vClusters.front().first >> sz_3_QUARTERS_INT_TYPE_][((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) - row_i++], data_tersect);
-                data_tersect &= Data[vClusters.front().first >> sz_3_QUARTERS_INT_TYPE_][((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) - row_i];
+                data_intersect = deleteClustersByIntersectionRow(Data[cur_color][cur_idx], data_intersect);
+                if      (cur_idx == 0)  cur_yota = 1ll;
+                else if (cur_idx == 9)  cur_yota = -1ll;
+                cur_idx += cur_yota;
+                data_intersect &= Data[cur_color][cur_idx];
+                if (!data_intersect)
+                {
+                    cur_yota *= -1ll;
+                    cur_idx += 2 * cur_yota;
+                    if (cur_idx >= 0 && cur_idx < 10)   data_intersect &= Data[cur_color][cur_idx];
+                }
             }
             shiftClusters(Data);
             size_t delt_score = static_cast<udata_t>(::std::pow(((vClusters.front().second << sz_HALF_INT_TYPE_) >> sz_HALF_INT_TYPE_) - 2, 2u));
@@ -191,6 +203,15 @@ int main()
 
             heap_sort_spec();
             ++moveNum;
+            for(auto& i : Data)
+            {
+                for(auto& y : i)
+                {
+                    ::std::cout << ::std::bitset<16ull>(y) << ::std::endl;
+                }
+                ::std::cout << ::std::endl;
+            }
+            ::std::cout << "-------------" << ::std::endl;
         }
         if (!vClusters.size()) score += 1000ull;
         ::std::cout << "Final score: " << score << ", with " << sumOfClusters(vClusters) << " balls remaining." << ::std::endl;
