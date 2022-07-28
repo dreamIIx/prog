@@ -75,7 +75,7 @@ constexpr size_t sz_3_QUARTERS_INT_TYPE_	=	(sz_HALF_INT_TYPE_ + sz_QUARTER_INT_T
 // shifts
 constexpr size_t _SHFT2_X_					=	(sizeof(udata_t) * __CHAR_BIT__ - _X_);
 
-ptrdiff_t _y_ = _Y_;
+ptrdiff_t _y_;
 
 using cluster_t = ::std::pair<udata_t, udata_t>;
 using vCluster_t = ::std::vector<cluster_t>;
@@ -175,6 +175,41 @@ int main()
 
         while(vClusters.size() && (vClusters.front().second << sz_HALF_INT_TYPE_) >> sz_HALF_INT_TYPE_ != 1)
         {
+            for(size_t yy {0}; yy < _Y_; ++yy)
+            {
+                for(size_t xx {0}; xx < _X_; ++xx)
+                {
+                    bool yeh = false;
+                    for(size_t i {0}; i < _DIM_; ++i)
+                    {
+                        if (GETBIT(Data[i][yy], xx))
+                        {
+                            switch(i)
+                            {
+                            case 0:
+                            {
+                                ::std::cout << 'R';
+                                break;
+                            }
+                            case 1:
+                            {
+                                ::std::cout << 'G';
+                                break;
+                            }
+                            case 2:
+                            {
+                                ::std::cout << 'B';
+                                break;
+                            }
+                            }
+                            yeh = true;
+                            break;
+                        }
+                    }
+                    if (!yeh)   ::std::cout << ' ';
+                }
+                ::std::cout << ::std::endl;
+            }
             //size_t row_i = 1ull;
             ptrdiff_t cur_yota = -1ll;
             ptrdiff_t cur_idx = ((vClusters.front().first << sz_QUARTER_INT_TYPE_) >> sz_3_QUARTERS_INT_TYPE_) + cur_yota;
@@ -203,15 +238,6 @@ int main()
 
             heap_sort_spec();
             ++moveNum;
-            for(auto& i : Data)
-            {
-                for(auto& y : i)
-                {
-                    ::std::cout << ::std::bitset<16ull>(y) << ::std::endl;
-                }
-                ::std::cout << ::std::endl;
-            }
-            ::std::cout << "-------------" << ::std::endl;
         }
         if (!vClusters.size()) score += 1000ull;
         ::std::cout << "Final score: " << score << ", with " << sumOfClusters(vClusters) << " balls remaining." << ::std::endl;
@@ -382,12 +408,11 @@ void shiftClusters(udata_t data[][_Y_])
 {
     udata_t map[_X_]{0u};
     bool flag = true;
-    for(ptrdiff_t y {_Y_ - _y_ + 1}; y < _Y_; ++y)
+    for(ptrdiff_t y {_Y_ - _y_}; y < _Y_; ++y)
     {
-        udata_t temp_y = (~(data[0][y] ^ data[1][y] ^ data[2][y]) << (_SHFT2_X_ + (_X_ - _X_))) >> (_SHFT2_X_ + (_X_ - _X_));
+        udata_t temp_y = (~(data[0][y] ^ data[1][y] ^ data[2][y]) << (_SHFT2_X_)) >> (_SHFT2_X_);
         if ((temp_y == ((1 << _X_) - 1)) && flag)
         {
-            if (_y_ == 10) --_y_;
             --_y_;
             continue;
         }
@@ -399,11 +424,13 @@ void shiftClusters(udata_t data[][_Y_])
     }
     for(size_t x {0}; x < _X_; ++x)
     {
-        if (map[x] == ((1 << _y_) - 2) << (_Y_ - _y_))
+        //::std::cout << ::std::bitset<10ull>(map[x]) << ::std::endl;
+        //::std::cout << ::std::bitset<10ull>(((1 << _y_) - 1) << (_Y_ - _y_)) << ::std::endl;
+        if (map[x] == ((1 << _y_) - 1) << (_Y_ - _y_))
         {
             for(size_t y = {_Y_ - _y_}; y < _Y_; ++y)
             {
-                for(size_t i {0}; i < 3ull; ++i)
+                for(size_t i {0}; i < _DIM_; ++i)
                 {
                     if (data[i][y])
                     {
@@ -423,13 +450,13 @@ void shiftClusters(udata_t data[][_Y_])
                 data_t upper_pos = decrease_at_least_to_1(vMap_X_clusters[i].first) + _Y_ - _y_;
                 for(size_t y {_Y_ - _y_}; y < upper_pos; ++y)
                 {
-                    for(size_t j {0}; j < 3ull; ++j)
+                    for(size_t j {0}; j < _DIM_; ++j)
                     {
                         if (GETBIT(data[j][upper_pos - y - 1], _X_ - 1 - x))
                         {
                             SETBIT(data[j][lower_pos - y], _X_ - 1 - x);
-                            UNSETBIT(data[(j + 1) % 3][lower_pos - y], _X_ - 1 - x);
-                            UNSETBIT(data[(j + 2) % 3][lower_pos - y], _X_ - 1 - x);
+                            UNSETBIT(data[(j + 1) % _DIM_][lower_pos - y], _X_ - 1 - x);
+                            UNSETBIT(data[(j + 2) % _DIM_][lower_pos - y], _X_ - 1 - x);
                             UNSETBIT(data[j][upper_pos - y - 1], _X_ - 1 - x);
                             break;
                         }
