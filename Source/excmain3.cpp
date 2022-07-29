@@ -4,8 +4,8 @@
 #include <math.h>
 #include <type_traits>
 #include <algorithm>
+#include <numeric>
 #include <exception>
-#include <assert.h>
 
 #if !defined(defDX_S)
 #define defDX_S(x)			#x
@@ -95,7 +95,7 @@ struct cluster_t
     clr_idx color;
     int size;
 
-    cluster_t() : lower_mask(0u), idx_pivot(-1), y_pivot(-1), color(clr_idx::none), size(1) {}
+    cluster_t() : lower_mask(0u), y_mask(-1), idx_pivot(-1), y_pivot(-1), color(clr_idx::none), size(1) {}
 
 };
 
@@ -107,7 +107,7 @@ void concatClustersRowByRow(udata_t, vCluster_t&, vCluster_t&, udata_t, clr_idx)
 void concatClusters(vCluster_t&, bool (*comp)(const cluster_t&, const cluster_t&));
 inline udata_t decrease_to_1(udata_t);
 inline udata_t decrease_at_least_to_1(udata_t);
-udata_t sumOfClusters(vCluster_t);
+udata_t sumOfClusters(const vCluster_t&);
 inline const char getColorByIndex(clr_idx);
 udata_t deleteClustersByIntersectionRow(udata_t&, udata_t);
 void shiftClusters(udata_t (&)[][_Y_]);
@@ -153,7 +153,7 @@ int main()
         size_t moveNum = 1ull;
         vCluster_t vClusters;
         vCluster_t vTempClusters;
-        auto spec_predicat_ = [](cluster_t& x, cluster_t& y) -> bool
+        auto spec_predicat_ = [](const cluster_t& x, const cluster_t& y) -> bool
         {
             if (x.size == y.size)
             {
@@ -374,14 +374,10 @@ inline udata_t decrease_at_least_to_1(udata_t x)
     return res;
 }
 
-udata_t sumOfClusters(vCluster_t cl)
+udata_t sumOfClusters(const vCluster_t& cl)
 {
-    udata_t res = 0u;
-    for(auto& x : cl)
-    {
-        res += x.size;
-    }
-    return res;
+    return ::std::accumulate(cl.begin(), cl.end(), static_cast<udata_t>(0u),
+        [](udata_t sum, const cluster_t& a) -> udata_t { return sum + static_cast<udata_t>(a.size); });
 }
 
 inline const char getColorByIndex(clr_idx x)

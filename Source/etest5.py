@@ -6,8 +6,8 @@ answ_file = open('current_test_answer.txt', 'w')
 random.seed()
 map_x = random.randint(5, 50)
 map_y = random.randint(5, 50)
-kernel_x = random.randint(1, 5)
-kernel_y = random.randint(1, 5)
+kernel_x = random.randint(2, 6)
+kernel_y = random.randint(2, 6)
 map = [['0' for d in range(map_x)] for c in range(map_y)]
 res_map = [['0' for d in range(map_x)] for c in range(map_y)]
 kernel = [['0' for d in range(kernel_x)] for c in range(kernel_y)]
