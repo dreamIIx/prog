@@ -1,3 +1,11 @@
+///
+// Compile with:
+// g++ -c -Wall -std=c++20 -ftree-vectorize -mavx -lboost_thread
+//
+// Author:  Shibanov Evgeny
+// Email:   shiba.zheka65@gmail.com
+///
+
 #include <iostream>
 #include <vector>
 #include <queue>
@@ -148,12 +156,12 @@ public:
         Recognizer temp;
         while(temp._current_active > 1 || !main_queue.empty())
         {
-            ::std::cout << "temp._current_active = " << temp._current_active << ::std::endl;
+            ::std::this_thread::sleep_for(::std::chrono::microseconds(1));
         }
         finishThreads();
     }
 
-    void printResultMap()
+    void printResultMap() noexcept(false)
     {
         ::std::vector<::std::pair<ptrdiff_t, ptrdiff_t>> vResList;
         for(size_t y {0}; y < vvResMap.size(); ++y)
@@ -202,7 +210,7 @@ public:
     }
 
 private:
-    void startThreads()
+    void startThreads() noexcept(false)
     {
         is_finished.store(false);
         vThreads.reserve(_COUNT_OF_THREADS_);
@@ -233,7 +241,7 @@ private:
         }
     }
 
-    void finishThreads()
+    void finishThreads() noexcept(false)
     {
         is_finished.store(true);
         ::std::thread thr([]()
