@@ -1,3 +1,11 @@
+///
+// Compile with:
+// g++ -c -Wall -std=c++20 -ftree-vectorize -mavx
+//
+// Author:  Shibanov Evgeny
+// Email:   shiba.zheka65@gmail.com
+///
+
 #include <iostream>
 #include <vector>
 #include <queue>
@@ -16,8 +24,8 @@ struct Point
     double x;
     double y;
 
-    Point() : is(state::undef), x(0.), y(0.) {}
-    Point(double ax, double ay) : is(state::undef)
+    Point() noexcept(true) : is(state::undef), x(0.), y(0.) {}
+    Point(double ax, double ay) noexcept(true) : is(state::undef)
     {
         if (ax >= 0 && ax <= 100 && ay >= 0 && ay <= 100)
         {
@@ -44,8 +52,8 @@ struct Vec2d
     double x;
     double y;
 
-    Vec2d(double ax, double ay) : x(ax), y(ay) {}
-    Vec2d(Point p1, Point p2) : x(p2.x - p1.x), y(p2.y - p1.y) {}
+    Vec2d(double ax, double ay) noexcept(true) : x(ax), y(ay) {}
+    Vec2d(Point p1, Point p2)   noexcept(true) : x(p2.x - p1.x), y(p2.y - p1.y) {}
 
 };
 
@@ -56,7 +64,7 @@ struct Straight
     double c;
 
     Straight(double aa, double ab, double ac)   noexcept(true)  : a(aa), b(ab), c(ac) {}
-    Straight(Point f, Point s)                noexcept(true)  : a(s.y - f.y), b(f.x - s.x), c(f.x * (f.y - s.y) + f.y * (s.x - f.x)) {}
+    Straight(Point f, Point s)                  noexcept(true)  : a(s.y - f.y), b(f.x - s.x), c(f.x * (f.y - s.y) + f.y * (s.x - f.x)) {}
 
 };
 
@@ -151,7 +159,7 @@ catch(...)
     return Point();
 }
 
-void splitVertexes(const Straight& line, ::std::vector<Polygon>& vtx)
+void splitVertexes(const Straight& line, ::std::vector<Polygon>& vtx) noexcept(false)
 {
     size_t temp = vtx.size();
     for(size_t i = 0ull; i < temp; ++i)
@@ -195,7 +203,7 @@ void splitVertexes(const Straight& line, ::std::vector<Polygon>& vtx)
     }
 }
 
-unsigned _spec_BFS(const ::std::vector<Polygon>& vPolygon, size_t target)
+unsigned _spec_BFS(const ::std::vector<Polygon>& vPolygon, size_t target) noexcept(false)
 {
     unsigned min_dist_2_target = -1;
     ::std::queue<size_t> queue;

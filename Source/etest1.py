@@ -2,7 +2,7 @@ import random
 
 
 with open("output.txt", "w") as f:
-    for j in range(10):
+    for j in range(15):
         array = list(range(1, 1001))
         station = []
         output_array = []

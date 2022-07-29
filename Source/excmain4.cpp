@@ -1,3 +1,11 @@
+///
+// Compile with:
+// g++ -c -Wall -std=c++20 -ftree-vectorize -mavx
+//
+// Author:  Shibanov Evgeny
+// Email:   shiba.zheka65@gmail.com
+///
+
 #include <iostream>
 #include <array>
 #include <vector>
@@ -58,8 +66,8 @@ struct coord
     unsigned x;
     unsigned y;
 
-    coord() : x(-1), y(-1) {}
-    coord(unsigned ax, unsigned ay) : x(ax), y(ay) {}
+    coord() noexcept(true) : x(::std::numeric_limits<unsigned>::max()), y(::std::numeric_limits<unsigned>::max()) {}
+    coord(unsigned ax, unsigned ay) noexcept(true) : x(ax), y(ay) {}
 
 };
 
@@ -75,8 +83,8 @@ struct piz_data
     size_t n;
     coord crd;
 
-    piz_data() : dir({0u, 0u, 0u, 0u}), cap(0u), potential(0u), n(0ull), crd() {}
-    piz_data(unsigned ax, unsigned ay, unsigned acap, unsigned apotential, size_t idx) : dir({0u, 0u, 0u, 0u}), cap(acap), potential(apotential), n(idx), crd(ax, ay) {}
+    piz_data() noexcept(true) : dir({0u, 0u, 0u, 0u}), cap(0u), potential(0u), n(0ull), crd() {}
+    piz_data(unsigned ax, unsigned ay, unsigned acap, unsigned apotential, size_t idx) noexcept(true) : dir({0u, 0u, 0u, 0u}), cap(acap), potential(apotential), n(idx), crd(ax, ay) {}
 
 };
 
@@ -98,7 +106,7 @@ struct spec_point
     ::std::array<unsigned, CNT_DIRECTIONS> lengthDir;
     ::std::array<T*, CNT_DIRECTIONS> targetDir;
 
-    spec_point() : is(state::undef), lengthDir(), targetDir() {}
+    spec_point() noexcept(true) : is(state::undef), lengthDir(), targetDir() {}
 
 };
 
@@ -180,7 +188,7 @@ int main()
                         if (x.is == spec_point<piz_data>::state::undef)
                         {
                             size_t count_free_directions = 0ull;
-                            size_t target_direction = -1;
+                            size_t target_direction = ::std::numeric_limits<size_t>::max();
                             for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
                             {
                                 if (x.targetDir[i])
@@ -230,8 +238,8 @@ int main()
 
             ::std::vector<unsigned> vPath(CNT_DIRECTIONS, 0u);
             //::std::pair<unsigned, double> decr = ::std::make_pair(-1, -1.);
-            ::std::pair<unsigned, double> decr = ::std::make_pair(-1, ::std::numeric_limits<double>::max());
-            size_t piz_idx = -1;
+            ::std::pair<unsigned, double> decr = ::std::make_pair(::std::numeric_limits<unsigned>::max(), ::std::numeric_limits<double>::max());
+            size_t piz_idx = ::std::numeric_limits<unsigned>::max();
             //::std::cout << "it - start_it: " << it - start_it << ::std::endl;
             for(auto iter = start_it; iter != it; ++iter)
             {
@@ -247,9 +255,10 @@ int main()
                     {
                         int cur_y = static_cast<ptrdiff_t>(temp.crd.y) + (c & 1 ? 0 : static_cast<ptrdiff_t>(temp.dir[c] + 1) * (c ? 1 : -1));
                         int cur_x = static_cast<ptrdiff_t>(temp.crd.x) + (c & 1 ? static_cast<ptrdiff_t>(temp.dir[c] + 1) * (c == 1 ? -1 : 1) : 0);
-                        if (cur_x < 0 || cur_x >= map_x || cur_y < 0 || cur_y >= map_y || vMap[cur_y][cur_x].is == spec_point<piz_data>::state::def)
+                        if (cur_x < 0 || static_cast<decltype(map_x)>(cur_x) >= map_x ||
+                            cur_y < 0 || static_cast<decltype(map_y)>(cur_y) >= map_y || vMap[cur_y][cur_x].is == spec_point<piz_data>::state::def)
                         {
-                            vInfo[c].first = -1;
+                            vInfo[c].first = ::std::numeric_limits<unsigned>::max();
                             continue;
                         }
                         for(size_t k {0}; k < CNT_DIRECTIONS; ++k)
@@ -292,7 +301,7 @@ int main()
                 }
             }
             
-            if (piz_idx != -1)
+            if (piz_idx != ::std::numeric_limits<unsigned>::max())
             {
                 for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
                 {
@@ -341,9 +350,9 @@ void updateMap(::std::vector<::std::vector<spec_point<T>>>& vMap, int ax, int ay
             if (vMap[y][ax].is == spec_point<T>::state::def) break;
         }
     }
-    if (ay + 1 < map_y)
+    if (static_cast<decltype(map_y)>(ay + 1) < map_y)
     {
-        for(size_t y {ay + 1}; y < map_y; ++y)
+        for(size_t y = 1ull + ay; y < map_y; ++y)
         {
             vMap[y][ax].lengthDir[0] = y - ay - 1;
             vMap[y][ax].targetDir[0] = ptr0;
@@ -359,9 +368,9 @@ void updateMap(::std::vector<::std::vector<spec_point<T>>>& vMap, int ax, int ay
             if (vMap[ay][x].is == spec_point<T>::state::def) break;
         }
     }
-    if (ax + 1 < map_x)
+    if (static_cast<decltype(map_x)>(ax + 1) < map_x)
     {
-        for(size_t x {ax + 1}; x < map_x; ++x)
+        for(size_t x = 1ull + ax; x < map_x; ++x)
         {
             vMap[ay][x].lengthDir[1] = x - ax - 1;
             vMap[ay][x].targetDir[1] = ptr1;

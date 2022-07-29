@@ -1,3 +1,11 @@
+///
+// Compile with:
+// g++ -c -Wall -std=c++20 -ftree-vectorize -mavx
+//
+// Author:  Shibanov Evgeny
+// Email:   shiba.zheka65@gmail.com
+///
+
 #include <iostream>
 #include <vector>
 #include <bitset>
@@ -95,7 +103,7 @@ struct cluster_t
     clr_idx color;
     int size;
 
-    cluster_t() : lower_mask(0u), y_mask(-1), idx_pivot(-1), y_pivot(-1), color(clr_idx::none), size(1) {}
+    cluster_t() noexcept(true) : lower_mask(0u), y_mask(-1), idx_pivot(-1), y_pivot(-1), color(clr_idx::none), size(1) {}
 
 };
 
@@ -202,7 +210,7 @@ int main()
             udata_t data_intersect = vClusters.front().lower_mask;
             deleteCluster(Data, vClusters, cur_color, cur_idx, data_intersect);
             shiftClusters(Data);
-            size_t delt_score = static_cast<udata_t>(::std::pow(vClusters.front().size - 2, 2u));
+            size_t delt_score = static_cast<size_t>(::std::pow(vClusters.front().size - 2, 2u));
             score += delt_score;
             ::std::cout << "Move " << moveNum << " at (" << _Y_ - (vClusters.front().y_pivot) << ','
                 << vClusters.front().idx_pivot + 1 << "): removed " << vClusters.front().size
@@ -223,8 +231,8 @@ void deleteCluster(udata_t (&Data)[][_Y_], vCluster_t& vClusters, clr_idx cur_co
     if(data_intersect & Data[cur_color][cur_idx])
     {
         data_intersect = deleteClustersByIntersectionRow(Data[cur_color][cur_idx], data_intersect);
-        if (cur_idx > _Y_ - _y_)    deleteCluster(Data, vClusters, cur_color, cur_idx - 1, data_intersect);
-        if (cur_idx < _Y_ - 1)          deleteCluster(Data, vClusters, cur_color, cur_idx + 1, data_intersect);
+        if (cur_idx > static_cast<ptrdiff_t>(_Y_) - _y_)    deleteCluster(Data, vClusters, cur_color, cur_idx - 1, data_intersect);
+        if (cur_idx < static_cast<ptrdiff_t>(_Y_) - 1)      deleteCluster(Data, vClusters, cur_color, cur_idx + 1, data_intersect);
     }
 }
 
@@ -273,7 +281,7 @@ void concatClustersRowByRow(udata_t row, vCluster_t& cl, vCluster_t& whole_cl, u
 {
     vCluster_t new_cl;
     makeClustersByRow(row, new_cl, cur_y);
-    for(ptrdiff_t i {0}; i < cl.size(); ++i)
+    for(ptrdiff_t i {0}; i < static_cast<ptrdiff_t>(cl.size()); ++i)
     {
         udata_t temp_mask = 0u;
         for(size_t j {0}; j < new_cl.size(); ++j)
@@ -327,7 +335,7 @@ void concatClusters(vCluster_t& cl, bool (*comp)(const cluster_t&, const cluster
 {
     for(size_t i {0}; i < cl.size(); ++i)
     {
-        for(ptrdiff_t j {i + 1}; j < cl.size(); ++j)
+        for(ptrdiff_t j = 1ll + i; j < static_cast<ptrdiff_t>(cl.size()); ++j)
         {
             if (comp(cl[i], cl[j]))
             {
@@ -408,7 +416,7 @@ void shiftClusters(udata_t (&data)[][_Y_])
 {
     udata_t map[_X_]{0u};
     bool flag = true;
-    for(ptrdiff_t y {_Y_ - _y_}; y < _Y_; ++y)
+    for(ptrdiff_t y = static_cast<ptrdiff_t>(_Y_) - _y_; y < static_cast<ptrdiff_t>(_Y_); ++y)
     {
         udata_t temp_y = (~(data[0][y] ^ data[1][y] ^ data[2][y]) << (_SHFT2_X_)) >> (_SHFT2_X_);
         if ((temp_y == ((1 << _X_) - 1)) && flag)
@@ -424,7 +432,7 @@ void shiftClusters(udata_t (&data)[][_Y_])
     }
     for(size_t x {0}; x < _X_; ++x)
     {
-        if (map[x] == ((1 << _y_) - 1) << (_Y_ - _y_))
+        if (map[x] == static_cast<udata_t>(((1 << _y_) - 1) << (_Y_ - _y_)))
         {
             for(size_t y = {_Y_ - _y_}; y < _Y_; ++y)
             {
@@ -442,11 +450,11 @@ void shiftClusters(udata_t (&data)[][_Y_])
         {
             vCluster_t vMap_X_clusters;
             makeClustersByRow(map[x], vMap_X_clusters, 0ull);
-            for(ptrdiff_t i {vMap_X_clusters.size() - 1}; i >= 0; --i)
+            for(ptrdiff_t i = static_cast<ptrdiff_t>(vMap_X_clusters.size()) - 1; i >= 0; --i)
             {
                 data_t lower_pos = decrease_to_1(vMap_X_clusters[i].lower_mask) + _Y_ - _y_;
                 data_t upper_pos = decrease_at_least_to_1(vMap_X_clusters[i].lower_mask) + _Y_ - _y_;
-                for(size_t y {_Y_ - _y_}; y < upper_pos; ++y)
+                for(size_t y {_Y_ - _y_}; static_cast<ptrdiff_t>(y) < upper_pos; ++y)
                 {
                     for(size_t j {0}; j < _DIM_; ++j)
                     {
