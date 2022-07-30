@@ -2,7 +2,6 @@ import random
 import matplotlib.pyplot as pyplot
 
 file = open('current_test.txt', 'w')
-answ_file = open('current_test_answer.txt', 'w')
 
 random.seed()
 n = random.randint(5, 15)

@@ -94,6 +94,7 @@ int main()
     vVertexes.back().dPoints.push_back(Point(0, 100));
     vVertexes.back().dPoints.push_back(Point(100, 100));
     vVertexes.back().dPoints.push_back(Point(100, 0));
+    // add a new line, and create and update polygons on the go
     for(size_t i {0}; i < n; ++i)
     {
         int x1, x2, y1, y2;
@@ -107,6 +108,7 @@ int main()
         treasure.x = x;
         treasure.y = y;
     }
+    // just find in which room the treasure
     for(size_t i {0}; i < vVertexes.size(); ++i)
     {
         int count = 0;
@@ -117,6 +119,7 @@ int main()
         }
         if (count == 1)
         {
+            // breadth-first search for minimum path
             ::std::cout << _spec_BFS(vVertexes, i) << ::std::endl;
             break;
         }

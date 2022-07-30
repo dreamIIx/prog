@@ -26,6 +26,7 @@ int main()
                 ::std::cin >> cur;
                 if (broken)
                 {
+                    // in order not to throw numbers in the input stream after a breakdown, print the answer at the end
                     continue;
                 }
                 if (cur > sI.top().first + 1)
@@ -43,6 +44,7 @@ int main()
                 }
                 else
                 {
+                    // if the current cluster is over, check if the transition to the previous one is correct
                     while (cur < sI.top().first - sI.top().second - 1)
                     {
                         auto [edge, shift] = sI.top();

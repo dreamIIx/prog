@@ -130,6 +130,7 @@ int main()
 
     for(size_t loop {0}; loop < count_loop; ++loop)
     {
+        // 3 maps for each color
         udata_t Data[_DIM_][_Y_]{0u};
         _y_ = _Y_;
         for(size_t y {0}; y < _Y_; ++y)
@@ -162,6 +163,7 @@ int main()
         size_t moveNum = 1ull;
         vCluster_t vClusters;
         vCluster_t vTempClusters;
+        // sort clusters (largest cluster <- leftmost pivot <- bottommost pivot)
         auto spec_predicat_ = [](const cluster_t& x, const cluster_t& y) -> bool
         {
             if (x.size == y.size)
@@ -174,7 +176,9 @@ int main()
             }
             return (x.size > y.size);
         };
-        auto comparator = [](const cluster_t& a, const cluster_t& b) -> bool { return a.lower_mask & b.lower_mask && a.y_mask == b.y_mask && a.color == b.color; };
+        auto comparator =
+            [](const cluster_t& a, const cluster_t& b) -> bool { return a.lower_mask & b.lower_mask && a.y_mask == b.y_mask && a.color == b.color; };
+        // makes clusters and sorts them
         auto heap_sort_spec = [&]()
         {
             vClusters.clear();
@@ -204,6 +208,7 @@ int main()
 
         heap_sort_spec();
 
+        // main loop
         while(vClusters.size() && vClusters.front().size != 1)
         {
             ptrdiff_t cur_idx = vClusters.front().y_mask - 1;
