@@ -62,7 +62,8 @@
 #define ER_IFN(x, beforeExc, AfterExc)		if ( !(x) ) { beforeExc ERROR_ AfterExc }
 #endif
 
-#define _COUNT_OF_THREADS_ (::boost::thread::physical_concurrency() * 4u)
+#define _CORE_LOAD_VALUE_ 4u
+#define _COUNT_OF_THREADS_ (::boost::thread::physical_concurrency() * _CORE_LOAD_VALUE_)
 
 ::std::atomic_bool is_finished;
 ::std::mutex mt_main;
