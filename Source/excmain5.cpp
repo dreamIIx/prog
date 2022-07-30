@@ -139,6 +139,7 @@ public:
 
     ~Map() {}
 
+    // recognizing patterns multithreaded
     void recognize() noexcept(false)
     {
         ER_IF(vvMap.empty() || vvKernel.empty(), ::std::cerr << "[EXC] Enter initial data before!" << ::std::endl;, return; )
@@ -165,6 +166,7 @@ public:
     void printResultMap() noexcept(false)
     {
         ::std::vector<::std::pair<ptrdiff_t, ptrdiff_t>> vResList;
+        // for optimization
         for(size_t y {0}; y < vvResMap.size(); ++y)
         {
             for(size_t x {0}; x < vvResMap.back().size(); ++x)
@@ -176,6 +178,7 @@ public:
                 }
             }
         }
+        // if a pattern is found, then delete the patterns that intersect with this one
         for(size_t i {0}; i < vResList.size(); ++i)
         {
             for(size_t j { i + 1ull }; j < vResList.size(); ++j)
@@ -287,6 +290,8 @@ private:
 
 };
 
+// thread function.
+// it only reads and does not modify the data, which looks "safe" to work with
 bool Recognizer::recognizeCell(const Map& instance, size_t ax, size_t ay) const noexcept(false) try
 {
     for(size_t ky {0}; ky < instance.vvKernel.size(); ++ky)

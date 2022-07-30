@@ -140,6 +140,7 @@ int main()
         ::std::cin >> map_y >> pcount;
         ::std::unique_ptr<piz_data> _data_storage(new piz_data[pcount]());
         ::std::vector<::std::reference_wrapper<piz_data>> vPizzeria;
+        // special map of distances for each cell
         ::std::vector<::std::vector<spec_point<piz_data>>> vMap(map_y, ::std::vector<spec_point<piz_data>>(map_x));
         for(size_t y {0}; y < map_y; ++y)
         {
@@ -172,17 +173,7 @@ int main()
         
         for(auto iter_main = start_it; iter_main != end_it;)
         {
-            for(auto iter = start_it; iter != end_it; ++iter)
-            {
-                iter->get().potential = 0u;
-                for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
-                {
-                    iter->get().potential += ::std::min(
-                        vMap[iter->get().crd.y + (i & 1 ? 0 : (i ? iter->get().dir[i] : -iter->get().dir[i]))]
-                            [iter->get().crd.x + (i & 1 ? (i == 1 ? -iter->get().dir[i] : iter->get().dir[i]) : 0)].lengthDir[i], iter->get().cap);
-                }
-            }
-
+            // this separate block of the program is needed to find unambiguous solution steps
             bool is_idle = false;
             while(!is_idle)
             {
@@ -228,27 +219,36 @@ int main()
                     }
                 }
             }
+            // end block
+
+            // init new potentials
+            for(auto iter = start_it; iter != end_it; ++iter)
+            {
+                iter->get().potential = 0u;
+                for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
+                {
+                    iter->get().potential += ::std::min(
+                        vMap[iter->get().crd.y + (i & 1 ? 0 : (i ? iter->get().dir[i] : -iter->get().dir[i]))]
+                            [iter->get().crd.x + (i & 1 ? (i == 1 ? -iter->get().dir[i] : iter->get().dir[i]) : 0)].lengthDir[i], iter->get().cap);
+                }
+            }
+
+            // special sort by pot. / cap. (prefer greater cap.)
             ::std::sort(start_it, end_it,
                 [](const piz_data& a, const piz_data& b) -> bool
                 {
                     return (static_cast<double>(a.potential) / a.cap < static_cast<double>(b.potential) / b.cap) ||
                         (static_cast<double>(a.potential) / a.cap - static_cast<double>(b.potential) / b.cap < 1e-7 && a.cap > b.cap);
                 });
-
-            ::std::stable_sort(vPizzeria.begin(), end_it,
-                [](const piz_data& a, const piz_data& b) -> bool
-                {
-                    return (a.cap > b.cap && b.cap == 0);
-                });
             end_it = ::std::partition(vPizzeria.begin(), end_it, [](const piz_data& a) -> bool { return a.cap != 0u; });
             
             auto it = ::std::partition(start_it, end_it,
                 [&](const piz_data& a) -> bool
                 {
-                    return ((static_cast<double>(a.potential) / a.cap - static_cast<double>(vPizzeria.front().get().potential) / vPizzeria.front().get().cap) < 1e-7) &&
-                        (a.cap == vPizzeria.front().get().cap);
+                    return ((static_cast<double>(a.potential) / a.cap - static_cast<double>(vPizzeria.front().get().potential) / vPizzeria.front().get().cap) < 1e-7);
                 });
 
+            // block of the program, the task of which is to choose for the selected pizzerias the minimum of the optimal coverage area
             ::std::vector<_spec_cell_data> vPath(CNT_DIRECTIONS, {0u, 0.});
             _spec_cell_data decr;
             size_t piz_idx = ::std::numeric_limits<unsigned>::max();
@@ -269,6 +269,7 @@ int main()
                 }
             }
             
+            // if the minimum coverage is found, we update the data on pizzerias and the field
             if (piz_idx != ::std::numeric_limits<unsigned>::max())
             {
                 for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
@@ -295,6 +296,7 @@ int main()
         ::std::cout << "Case " << ++nLoop << ":\n";
         for(auto& x : vPizzeria)
         {
+            // Output order changed!
             // n e s w
             ::std::cout << x.get().dir[0] << ' ' << x.get().dir[3] << ' '
                 << x.get().dir[2] << ' ' << x.get().dir[1] << ' ' << '[' << x.get().crd.x + 1 << ", " << x.get().crd.y + 1 << "]\n";
@@ -309,9 +311,12 @@ int main()
 unsigned findOptimalPath(::std::vector<_spec_cell_data>& vCurPath, _spec_cell_data& cur_decr, piz_data temp,
     unsigned map_x, unsigned map_y, const ::std::vector<::std::vector<spec_point<piz_data>>>& vMap)
 {
+    // recursive algorithm
+    // but initially it wasn't. needed for the case if you need to "roll back" to some place the built path
     if(temp.cap)
     {
         ::std::vector<_spec_cell_data> vInfo(CNT_DIRECTIONS, {::std::numeric_limits<unsigned>::max(), ::std::numeric_limits<double>::max()});
+        // for 4 directions
         for(size_t c {0}; c < CNT_DIRECTIONS; ++c)
         {
             vInfo[c].count = 0u;
@@ -324,6 +329,7 @@ unsigned findOptimalPath(::std::vector<_spec_cell_data>& vCurPath, _spec_cell_da
                 vInfo[c].count = ::std::numeric_limits<unsigned>::max();
                 continue;
             }
+            // for 3 directions to find intersections
             for(size_t k = {0}; k < CNT_DIRECTIONS; ++k)
             {
                 if (c == (k - 2) % 4) continue;
@@ -341,13 +347,16 @@ unsigned findOptimalPath(::std::vector<_spec_cell_data>& vCurPath, _spec_cell_da
                         if (res_potential > 1.)
                         {
                             vInfo[c].count = ::std::numeric_limits<unsigned>::max();
-                            continue;
+                            break;
                         }
                         vInfo[c].kf += (static_cast<double>(vMap[cur_y][cur_x].targetDir[k]->cap) * diff) / vMap[cur_y][cur_x].targetDir[k]->potential;
                     }
                 }
             }
         }
+        // we build the path further, choosing the most optimal path in terms of space costs.
+        // but "for" just in case (to roll back), on the next new cell of the path further,
+        // it suddenly turns out that we have blocked more space for other pizzerias than they need
         for(size_t u {0}; u < CNT_DIRECTIONS; ++u)
         {
             auto it_min = ::std::min_element(vInfo.begin(), vInfo.end(),
@@ -356,17 +365,21 @@ unsigned findOptimalPath(::std::vector<_spec_cell_data>& vCurPath, _spec_cell_da
                         return a.count < b.count || (a.count == b.count && a.kf < b.kf - 1e-7);
                     });
             size_t idx = it_min - vInfo.begin();
+            // if there is a way
             if (vInfo[idx].count != ::std::numeric_limits<unsigned>::max())
             {
                 int cur_y = static_cast<ptrdiff_t>(temp.crd.y) + (idx & 1 ? 0 : static_cast<ptrdiff_t>(temp.dir[idx] + 1) * (idx ? 1 : -1));
                 int cur_x = static_cast<ptrdiff_t>(temp.crd.x) + (idx & 1 ? static_cast<ptrdiff_t>(temp.dir[idx] + 1) * (idx == 1 ? -1 : 1) : 0);
-                auto _spec_update_potential = [&](int increaser) -> void
+                auto _spec_update_path = [&](int increaser) -> void
                 {
                     vCurPath[idx].count += increaser;
                     temp.dir[idx] += increaser;
                     temp.cap -= increaser;
                     cur_decr.count += vInfo[idx].count;
                     cur_decr.kf += vInfo[idx].kf;
+                };
+                auto _spec_update_potential = [&](int increaser) -> void
+                {
                     for(size_t k = {0}; k < CNT_DIRECTIONS; ++k)
                     {
                         if (idx == (k - 2) % 4) continue;
@@ -379,13 +392,17 @@ unsigned findOptimalPath(::std::vector<_spec_cell_data>& vCurPath, _spec_cell_da
                         }
                     }
                 };
+                _spec_update_path(1);
                 _spec_update_potential(1);
                 vInfo[idx].count = findOptimalPath(vCurPath, cur_decr, temp, map_x, map_y, vMap);
+                // if all is ok
                 if (vInfo[idx].count != ::std::numeric_limits<unsigned>::max())
                 {
                     temp.cap = vInfo[idx].count;
+                    _spec_update_potential(-1);
                     break;
                 }
+                _spec_update_path(-1);
                 _spec_update_potential(-1);
             }
             else return ::std::numeric_limits<unsigned>::max();
