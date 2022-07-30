@@ -1,4 +1,5 @@
 ///
+// DigitalLab
 // Compile with:
 // g++ -c -Wall -std=c++20 -ftree-vectorize -mavx -lboost_thread
 //
@@ -14,7 +15,7 @@
 #include <mutex>
 #include <algorithm>
 #include <condition_variable>
-#include <boost/thread.hpp>
+#include <boost/thread.hpp>     // just for ::boost::thread::physical_concurrency()
 
 #if !defined(defDX_S)
 #define defDX_S(x)			#x
