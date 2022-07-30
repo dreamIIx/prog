@@ -138,7 +138,7 @@ int main()
     while(map_x)
     {
         ::std::cin >> map_y >> pcount;
-        ::std::unique_ptr<piz_data> _data_storage(new piz_data[pcount]());
+        ::std::unique_ptr<piz_data[]> _data_storage(new piz_data[pcount]());
         ::std::vector<::std::reference_wrapper<piz_data>> vPizzeria;
         // special map of distances for each cell
         ::std::vector<::std::vector<spec_point<piz_data>>> vMap(map_y, ::std::vector<spec_point<piz_data>>(map_x));
