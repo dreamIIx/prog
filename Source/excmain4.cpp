@@ -1,4 +1,5 @@
 ///
+// Pizza
 // Compile with:
 // g++ -c -Wall -std=c++20 -ftree-vectorize -mavx
 //
@@ -233,12 +234,6 @@ int main()
                     return (static_cast<double>(a.potential) / a.cap < static_cast<double>(b.potential) / b.cap) ||
                         (static_cast<double>(a.potential) / a.cap - static_cast<double>(b.potential) / b.cap < 1e-7 && a.cap > b.cap);
                 });
-            /*::std::sort(start_it, end_it,
-                [](const piz_data& a, const piz_data& b) -> bool
-                {
-                    return (a.cap > b.cap) ||
-                        (a.cap == b.cap && static_cast<double>(a.potential) < a.cap - static_cast<double>(b.potential) / b.cap);
-                });*/
 
             ::std::stable_sort(vPizzeria.begin(), end_it,
                 [](const piz_data& a, const piz_data& b) -> bool
