@@ -64,8 +64,8 @@ int main()
                     ++sI.top().second;
                 }
             }
-            if (broken)     ::std::cout << "\nNo" << ::std::endl;
-            else            ::std::cout << "\nYes" << ::std::endl;
+            if (broken)     ::std::cout << "No" << ::std::endl;
+            else            ::std::cout << "Yes" << ::std::endl;
             broken = false;
         }
         ::std::cout << ::std::endl;
