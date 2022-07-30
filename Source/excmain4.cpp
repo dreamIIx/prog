@@ -110,6 +110,18 @@ struct spec_point
 
 };
 
+struct _spec_cell_data
+{
+    unsigned count; // damage_count, count
+    double kf;      // damage_kf
+
+    _spec_cell_data() noexcept(true) : count(::std::numeric_limits<decltype(count)>::max()), kf(::std::numeric_limits<decltype(kf)>::max()) {}
+    _spec_cell_data(unsigned cnt, double kf) noexcept(true) : count(cnt), kf(kf) {}
+
+};
+
+unsigned findOptimalPath(::std::vector<_spec_cell_data>&, _spec_cell_data&, piz_data,
+    unsigned, unsigned, const ::std::vector<::std::vector<spec_point<piz_data>>>&);
 template<typename T>
 void updateMap(::std::vector<::std::vector<spec_point<T>>>& vMap, int, int, unsigned, unsigned,
     T* ptr0, T* ptr1 = nullptr, T* ptr2 = nullptr, T* ptr3 = nullptr);
@@ -170,13 +182,6 @@ int main()
                 }
             }
 
-            ::std::sort(start_it, end_it,
-                [](const piz_data& a, const piz_data& b) -> bool
-                {
-                    return (static_cast<double>(a.potential) / a.cap < static_cast<double>(b.potential) / b.cap) ||
-                        (static_cast<double>(a.potential) / a.cap - static_cast<double>(b.potential) / b.cap < 1e-7 && a.cap > b.cap);
-                });
-
             bool is_idle = false;
             while(!is_idle)
             {
@@ -222,82 +227,50 @@ int main()
                     }
                 }
             }
+            ::std::sort(start_it, end_it,
+                [](const piz_data& a, const piz_data& b) -> bool
+                {
+                    return (static_cast<double>(a.potential) / a.cap < static_cast<double>(b.potential) / b.cap) ||
+                        (static_cast<double>(a.potential) / a.cap - static_cast<double>(b.potential) / b.cap < 1e-7 && a.cap > b.cap);
+                });
+            /*::std::sort(start_it, end_it,
+                [](const piz_data& a, const piz_data& b) -> bool
+                {
+                    return (a.cap > b.cap) ||
+                        (a.cap == b.cap && static_cast<double>(a.potential) < a.cap - static_cast<double>(b.potential) / b.cap);
+                });*/
 
             ::std::stable_sort(vPizzeria.begin(), end_it,
                 [](const piz_data& a, const piz_data& b) -> bool
                 {
-                    return (a.cap > b.cap && b.cap == 0) || (a.cap < b.cap && a.cap == 0);
+                    return (a.cap > b.cap && b.cap == 0);
                 });
             end_it = ::std::partition(vPizzeria.begin(), end_it, [](const piz_data& a) -> bool { return a.cap != 0u; });
             
-            /*auto it = ::std::partition(start_it, end_it,
+            auto it = ::std::partition(start_it, end_it,
                 [&](const piz_data& a) -> bool
-                    { return ((static_cast<double>(a.potential) / a.cap - static_cast<double>(vPizzeria.front().get().potential) / vPizzeria.front().get().cap) < 1e-7) &&
-                        (a.cap == vPizzeria.front().get().cap); });*/
-            auto it = end_it;
+                {
+                    return ((static_cast<double>(a.potential) / a.cap - static_cast<double>(vPizzeria.front().get().potential) / vPizzeria.front().get().cap) < 1e-7) &&
+                        (a.cap == vPizzeria.front().get().cap);
+                });
 
-            ::std::vector<unsigned> vPath(CNT_DIRECTIONS, 0u);
-            //::std::pair<unsigned, double> decr = ::std::make_pair(-1, -1.);
-            ::std::pair<unsigned, double> decr = ::std::make_pair(::std::numeric_limits<unsigned>::max(), ::std::numeric_limits<double>::max());
+            ::std::vector<_spec_cell_data> vPath(CNT_DIRECTIONS, {0u, 0.});
+            _spec_cell_data decr;
             size_t piz_idx = ::std::numeric_limits<unsigned>::max();
-            //::std::cout << "it - start_it: " << it - start_it << ::std::endl;
             for(auto iter = start_it; iter != it; ++iter)
             {
-                ::std::vector<unsigned> vCurPath(CNT_DIRECTIONS, 0u);
-                //::std::pair<unsigned, double> cur_decr = ::std::make_pair(0u, -1.);
-                ::std::pair<unsigned, double> cur_decr = ::std::make_pair(0u, 0.);
-                piz_data temp = *iter;
-                while(temp.cap)
+                ::std::vector<_spec_cell_data> vCurPath(CNT_DIRECTIONS, {0u, 0.});
+                _spec_cell_data cur_decr(0u, 0.);
+                
+                unsigned temp_res = findOptimalPath(vCurPath, cur_decr, *iter, map_x, map_y, vMap);
+                if (!temp_res)
                 {
-                    //::std::vector<::std::pair<unsigned, double>> vInfo(CNT_DIRECTIONS, ::std::make_pair(0u, -1.));
-                    ::std::vector<::std::pair<unsigned, double>> vInfo(CNT_DIRECTIONS, ::std::make_pair(0u, 0.));
-                    for(size_t c {0}; c < CNT_DIRECTIONS; ++c)
+                    if (cur_decr.kf < decr.kf - 1e-7 || (cur_decr.kf - decr.kf < 1e-7 && cur_decr.count < decr.count))
                     {
-                        int cur_y = static_cast<ptrdiff_t>(temp.crd.y) + (c & 1 ? 0 : static_cast<ptrdiff_t>(temp.dir[c] + 1) * (c ? 1 : -1));
-                        int cur_x = static_cast<ptrdiff_t>(temp.crd.x) + (c & 1 ? static_cast<ptrdiff_t>(temp.dir[c] + 1) * (c == 1 ? -1 : 1) : 0);
-                        if (cur_x < 0 || static_cast<decltype(map_x)>(cur_x) >= map_x ||
-                            cur_y < 0 || static_cast<decltype(map_y)>(cur_y) >= map_y || vMap[cur_y][cur_x].is == spec_point<piz_data>::state::def)
-                        {
-                            vInfo[c].first = ::std::numeric_limits<unsigned>::max();
-                            continue;
-                        }
-                        for(size_t k {0}; k < CNT_DIRECTIONS; ++k)
-                        {
-                            if (c == (k - 2) % 4) continue;
-                            if (vMap[cur_y][cur_x].targetDir[k])
-                            {
-                                unsigned temp_cap = ::std::min(vMap[cur_y][cur_x].targetDir[k]->cap,
-                                    vMap[cur_y][cur_x].lengthDir[k] + 1 + vMap[cur_y][cur_x].lengthDir[(k - 2) % 4]);
-                                int diff = temp_cap - vMap[cur_y][cur_x].lengthDir[k];
-                                if (diff > 0)
-                                {
-                                    vInfo[c].first += diff;
-                                    double temp_kf = (static_cast<double>(diff) / vMap[cur_y][cur_x].targetDir[k]->potential) * vMap[cur_y][cur_x].targetDir[k]->cap;
-                                    //if (vInfo[c].second < temp_kf) vInfo[c].second = temp_kf;
-                                    vInfo[c].second += temp_kf;
-                                }
-                            }
-                        }
+                        ::std::copy(vCurPath.begin(), vCurPath.end(), vPath.begin());
+                        decr = cur_decr;
+                        piz_idx = iter - vPizzeria.begin();
                     }
-                    auto it_min = ::std::min_element(vInfo.begin(), vInfo.end(),
-                        [](const ::std::pair<unsigned, double>& a, const ::std::pair<unsigned, double>& b) -> bool
-                            {
-                                return a.first < b.first || (a.first == b.first && a.second < b.second - 1e-7);
-                                //return a.second < b.second - 1e-7 || (a.second - b.second < 1e-7 && a.first < b.first);
-                            });
-                    ++vCurPath[it_min - vInfo.begin()];
-                    ++temp.dir[it_min - vInfo.begin()];
-                    --temp.cap;
-                    cur_decr.first += it_min->first;
-                    //if (cur_decr.second < it_min->second) cur_decr.second = it_min->second;
-                    cur_decr.second += it_min->second;
-                }
-                //if (cur_decr.first < decr.first || (cur_decr.first == decr.first && cur_decr.second < decr.second))
-                if (cur_decr.second < decr.second - 1e-7 || (cur_decr.second - decr.second < 1e-7 && cur_decr.first < decr.first))
-                {
-                    ::std::copy(vCurPath.begin(), vCurPath.end(), vPath.begin());
-                    decr = cur_decr;
-                    piz_idx = iter - vPizzeria.begin();
                 }
             }
             
@@ -305,7 +278,7 @@ int main()
             {
                 for(size_t i {0}; i < CNT_DIRECTIONS; ++i)
                 {
-                    for(size_t j {1}; j <= vPath[i]; ++j)
+                    for(size_t j {1}; j <= vPath[i].count; ++j)
                     {
                         updateMap(vMap,
                             static_cast<ptrdiff_t>(vPizzeria[piz_idx].get().crd.x) +
@@ -315,8 +288,8 @@ int main()
                             map_x, map_y,
                             static_cast<piz_data*>(nullptr), static_cast<piz_data*>(nullptr), static_cast<piz_data*>(nullptr), static_cast<piz_data*>(nullptr));
                     }
-                    vPizzeria[piz_idx].get().dir[i] += vPath[i];
-                    vPizzeria[piz_idx].get().cap -= vPath[i];
+                    vPizzeria[piz_idx].get().dir[i] += vPath[i].count;
+                    vPizzeria[piz_idx].get().cap -= vPath[i].count;
                 }
                 ::std::swap(vPizzeria[piz_idx], *(end_it - 1));
                 --end_it;
@@ -327,6 +300,7 @@ int main()
         ::std::cout << "Case " << ++nLoop << ":\n";
         for(auto& x : vPizzeria)
         {
+            // n e s w
             ::std::cout << x.get().dir[0] << ' ' << x.get().dir[3] << ' '
                 << x.get().dir[2] << ' ' << x.get().dir[1] << ' ' << '[' << x.get().crd.x + 1 << ", " << x.get().crd.y + 1 << "]\n";
         }
@@ -336,6 +310,94 @@ int main()
 
     return 0;
 }
+
+unsigned findOptimalPath(::std::vector<_spec_cell_data>& vCurPath, _spec_cell_data& cur_decr, piz_data temp,
+    unsigned map_x, unsigned map_y, const ::std::vector<::std::vector<spec_point<piz_data>>>& vMap)
+{
+    if(temp.cap)
+    {
+        ::std::vector<_spec_cell_data> vInfo(CNT_DIRECTIONS, {::std::numeric_limits<unsigned>::max(), ::std::numeric_limits<double>::max()});
+        for(size_t c {0}; c < CNT_DIRECTIONS; ++c)
+        {
+            vInfo[c].count = 0u;
+            vInfo[c].kf = 0.;
+            int cur_y = static_cast<ptrdiff_t>(temp.crd.y) + (c & 1 ? 0 : static_cast<ptrdiff_t>(temp.dir[c] + 1) * (c ? 1 : -1));
+            int cur_x = static_cast<ptrdiff_t>(temp.crd.x) + (c & 1 ? static_cast<ptrdiff_t>(temp.dir[c] + 1) * (c == 1 ? -1 : 1) : 0);
+            if (cur_x < 0 || static_cast<decltype(map_x)>(cur_x) >= map_x ||
+                cur_y < 0 || static_cast<decltype(map_y)>(cur_y) >= map_y || vMap[cur_y][cur_x].is == spec_point<piz_data>::state::def)
+            {
+                vInfo[c].count = ::std::numeric_limits<unsigned>::max();
+                continue;
+            }
+            for(size_t k = {0}; k < CNT_DIRECTIONS; ++k)
+            {
+                if (c == (k - 2) % 4) continue;
+                if (vMap[cur_y][cur_x].targetDir[k])
+                {
+                    unsigned temp_cap = ::std::min(vMap[cur_y][cur_x].targetDir[k]->cap,
+                        vMap[cur_y][cur_x].lengthDir[k] + 1 + vMap[cur_y][cur_x].lengthDir[(k - 2) % 4]);
+                    int diff = static_cast<int>(temp_cap) - vMap[cur_y][cur_x].lengthDir[k];
+                    if (diff > 0)
+                    {
+                        vInfo[c].count += diff;
+                        double res_potential = vMap[cur_y][cur_x].targetDir[k]->potential - diff;
+                        if (res_potential)      res_potential = static_cast<double>(vMap[cur_y][cur_x].targetDir[k]->cap) / res_potential;
+                        else                    res_potential = ::std::numeric_limits<double>::max();
+                        if (res_potential > 1.)
+                        {
+                            vInfo[c].count = ::std::numeric_limits<unsigned>::max();
+                            continue;
+                        }
+                        vInfo[c].kf += (static_cast<double>(vMap[cur_y][cur_x].targetDir[k]->cap) * diff) / vMap[cur_y][cur_x].targetDir[k]->potential;
+                    }
+                }
+            }
+        }
+        for(size_t u {0}; u < CNT_DIRECTIONS; ++u)
+        {
+            auto it_min = ::std::min_element(vInfo.begin(), vInfo.end(),
+                [](const _spec_cell_data& a, const _spec_cell_data& b) -> bool
+                    {
+                        return a.count < b.count || (a.count == b.count && a.kf < b.kf - 1e-7);
+                    });
+            size_t idx = it_min - vInfo.begin();
+            if (vInfo[idx].count != ::std::numeric_limits<unsigned>::max())
+            {
+                int cur_y = static_cast<ptrdiff_t>(temp.crd.y) + (idx & 1 ? 0 : static_cast<ptrdiff_t>(temp.dir[idx] + 1) * (idx ? 1 : -1));
+                int cur_x = static_cast<ptrdiff_t>(temp.crd.x) + (idx & 1 ? static_cast<ptrdiff_t>(temp.dir[idx] + 1) * (idx == 1 ? -1 : 1) : 0);
+                auto _spec_update_potential = [&](int increaser) -> void
+                {
+                    vCurPath[idx].count += increaser;
+                    temp.dir[idx] += increaser;
+                    temp.cap -= increaser;
+                    cur_decr.count += vInfo[idx].count;
+                    cur_decr.kf += vInfo[idx].kf;
+                    for(size_t k = {0}; k < CNT_DIRECTIONS; ++k)
+                    {
+                        if (idx == (k - 2) % 4) continue;
+                        if (vMap[cur_y][cur_x].targetDir[k])
+                        {
+                            unsigned temp_cap = ::std::min(vMap[cur_y][cur_x].targetDir[k]->cap,
+                                vMap[cur_y][cur_x].lengthDir[k] + 1 + vMap[cur_y][cur_x].lengthDir[(k - 2) % 4]);
+                            int diff = static_cast<int>(temp_cap) - vMap[cur_y][cur_x].lengthDir[k];
+                            if (diff > 0) vMap[cur_y][cur_x].targetDir[k]->potential -= diff * increaser;
+                        }
+                    }
+                };
+                _spec_update_potential(1);
+                vInfo[idx].count = findOptimalPath(vCurPath, cur_decr, temp, map_x, map_y, vMap);
+                if (vInfo[idx].count != ::std::numeric_limits<unsigned>::max())
+                {
+                    temp.cap = vInfo[idx].count;
+                    break;
+                }
+                _spec_update_potential(-1);
+            }
+            else return ::std::numeric_limits<unsigned>::max();
+        }
+    }
+    return temp.cap;
+};
 
 template<typename T>
 void updateMap(::std::vector<::std::vector<spec_point<T>>>& vMap, int ax, int ay, unsigned map_x, unsigned map_y, T* ptr0, T* ptr1, T* ptr2, T* ptr3)
