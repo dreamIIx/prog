@@ -218,6 +218,7 @@ int main()
             shiftClusters(Data);
             size_t delt_score = static_cast<size_t>(::std::pow(vClusters.front().size - 2, 2u));
             score += delt_score;
+            // output is (y, x) of pivot
             ::std::cout << "Move " << moveNum << " at (" << _Y_ - (vClusters.front().y_pivot) << ','
                 << vClusters.front().idx_pivot + 1 << "): removed " << vClusters.front().size
                 << " balls of color " << getColorByIndex(vClusters.front().color) << ", got " << delt_score << " points." << ::std::endl;
