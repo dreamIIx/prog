@@ -1,4 +1,4 @@
-Some cases have the several solves. Here are those that the program produces. However, it's best to keep that in mind.
+Some cases have the several solutions. Here are those that the program produces. However, it's best to keep that in mind.
 2 2 2
 1 1 1
 2 2 1
