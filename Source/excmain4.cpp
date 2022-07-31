@@ -1,5 +1,5 @@
 ///
-// Pizza
+// Pizza (unsolved, but there are thoughts in the comments below)
 // Compile with:
 // g++ -c -Wall -std=c++20 -ftree-vectorize -mavx
 //
@@ -115,9 +115,13 @@ struct _spec_cell_data
 {
     unsigned count; // damage_count, count
     double kf;      // damage_kf
+    double max_kf;  // max_damage_kf
 
-    _spec_cell_data() noexcept(true) : count(::std::numeric_limits<decltype(count)>::max()), kf(::std::numeric_limits<decltype(kf)>::max()) {}
-    _spec_cell_data(unsigned cnt, double kf) noexcept(true) : count(cnt), kf(kf) {}
+    _spec_cell_data() noexcept(true) :
+        count(::std::numeric_limits<decltype(count)>::max()),
+        kf(::std::numeric_limits<decltype(kf)>::max()),
+        max_kf(0.) {}
+    _spec_cell_data(unsigned cnt, double akf, double mkf) noexcept(true) : count(cnt), kf(akf), max_kf(mkf) {}
 
 };
 
@@ -249,18 +253,19 @@ int main()
                 });
 
             // block of the program, the task of which is to choose for the selected pizzerias the minimum of the optimal coverage area
-            ::std::vector<_spec_cell_data> vPath(CNT_DIRECTIONS, {0u, 0.});
+            ::std::vector<_spec_cell_data> vPath(CNT_DIRECTIONS, {0u, 0., 0.});
             _spec_cell_data decr;
             size_t piz_idx = ::std::numeric_limits<unsigned>::max();
             for(auto iter = start_it; iter != it; ++iter)
             {
-                ::std::vector<_spec_cell_data> vCurPath(CNT_DIRECTIONS, {0u, 0.});
-                _spec_cell_data cur_decr(0u, 0.);
+                ::std::vector<_spec_cell_data> vCurPath(CNT_DIRECTIONS, {0u, 0., 0.});
+                _spec_cell_data cur_decr(0u, 0., 0.);
                 
                 unsigned temp_res = findOptimalPath(vCurPath, cur_decr, *iter, map_x, map_y, vMap);
                 if (!temp_res)
                 {
-                    if (cur_decr.kf < decr.kf - 1e-7 || (cur_decr.kf - decr.kf < 1e-7 && cur_decr.count < decr.count))
+                    if (cur_decr.count < decr.count || (cur_decr.count == decr.count && (cur_decr.max_kf < decr.max_kf - 1e-7 ||
+                        (cur_decr.max_kf - decr.max_kf < 1e-7 && cur_decr.kf < decr.kf - 1e-7))))
                     {
                         ::std::copy(vCurPath.begin(), vCurPath.end(), vPath.begin());
                         decr = cur_decr;
@@ -290,6 +295,14 @@ int main()
                 ::std::swap(vPizzeria[piz_idx], *(end_it - 1));
                 --end_it;
             }
+            //else {}
+            // I think this is the key point that needs to be added.
+            // but the solution that comes to mind (recursion through this entire cycle, for the sake of rolling back)
+            // will be too expensive both in terms of resources and performance.
+            // It seems to me that more time is needed to come up with a simple and general solution algorithm,
+            // if it can exist at all for this problem.
+            // 
+            // The task is not easy to solve it simply
         }
         
         ::std::sort(vPizzeria.begin(), vPizzeria.end(), [](const piz_data& a, const piz_data& b) -> bool { return a.n < b.n; });
@@ -315,7 +328,7 @@ unsigned findOptimalPath(::std::vector<_spec_cell_data>& vCurPath, _spec_cell_da
     // but initially it wasn't. needed for the case if you need to "roll back" to some place the built path
     if(temp.cap)
     {
-        ::std::vector<_spec_cell_data> vInfo(CNT_DIRECTIONS, {::std::numeric_limits<unsigned>::max(), ::std::numeric_limits<double>::max()});
+        ::std::vector<_spec_cell_data> vInfo(CNT_DIRECTIONS);
         // for 4 directions
         for(size_t c {0}; c < CNT_DIRECTIONS; ++c)
         {
@@ -349,7 +362,9 @@ unsigned findOptimalPath(::std::vector<_spec_cell_data>& vCurPath, _spec_cell_da
                             vInfo[c].count = ::std::numeric_limits<unsigned>::max();
                             break;
                         }
-                        vInfo[c].kf += (static_cast<double>(vMap[cur_y][cur_x].targetDir[k]->cap) * diff) / vMap[cur_y][cur_x].targetDir[k]->potential;
+                        res_potential = (static_cast<double>(vMap[cur_y][cur_x].targetDir[k]->cap) * diff) / vMap[cur_y][cur_x].targetDir[k]->potential;
+                        vInfo[c].kf += res_potential;
+                        if (res_potential > vInfo[c].max_kf) vInfo[c].max_kf = res_potential;
                     }
                 }
             }
@@ -362,7 +377,7 @@ unsigned findOptimalPath(::std::vector<_spec_cell_data>& vCurPath, _spec_cell_da
             auto it_min = ::std::min_element(vInfo.begin(), vInfo.end(),
                 [](const _spec_cell_data& a, const _spec_cell_data& b) -> bool
                     {
-                        return a.count < b.count || (a.count == b.count && a.kf < b.kf - 1e-7);
+                        return a.count < b.count || (a.count == b.count && (a.max_kf < b.max_kf || (a.max_kf - b.max_kf < 1e-7 && a.kf < b.kf - 1e-7)));
                     });
             size_t idx = it_min - vInfo.begin();
             // if there is a way
