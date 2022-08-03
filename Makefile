@@ -1,5 +1,3 @@
-#.PHONY: all clean
-
 CXX = g++
 DEBUGFLAGS = -g
 RELEASEFLAGS = -O3
@@ -50,6 +48,7 @@ else
 endif
 
 $(info init..)
+.PHONY: vmain1d vmain1 vmain2d vmain2 vmain3d vmain3 emain1d emain1 emain2d emain2 emain3d emain3 emain4d emain4 emain5d emain5
 vmain1d: ./Source/vmain1.cpp $(EXE_vmain1d)
 vmain1: ./Source/vmain1.cpp $(EXE_vmain1)
 vmain2d: ./Source/vmain2.cpp $(EXE_vmain2d)
@@ -195,8 +194,13 @@ $(EXE_emain5): ./Source/emain5.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) -lboost_thread $^ -o $@
 
+.PHONY: clean
 clean:
 	rm ./Source/*.o
+clean_with_bin:
+	rm ./Source/*.o
+	rm ./Debug/*
+	rm ./Release/*
 #ifeq ($(OS), Windows_NT)
 #	copy .\Source\*.o .\*.o
 #	del .\Source\*.o
