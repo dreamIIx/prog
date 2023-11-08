@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <numeric>
 #include <exception>
+#include <thread>
 
 #if !defined(defDX_S)
 #define defDX_S(x)			#x
@@ -95,6 +96,8 @@ enum clr_idx : ptrdiff_t
     idxBLUE
 };
 
+// cluster_t - is a bits that are in the same row and belong to the same cluster
+// (hence the amortization of the task for loops, minimum of it - 0, maximum - _X_ / 2 (O(_X_)))
 struct cluster_t
 {
     udata_t lower_mask;
@@ -110,7 +113,6 @@ struct cluster_t
 
 using vCluster_t = ::std::vector<cluster_t>;
 
-void deleteCluster(udata_t (&)[][_Y_], vCluster_t&, clr_idx, ptrdiff_t, udata_t);
 void makeClustersByRow(udata_t, vCluster_t&, udata_t);
 void concatClustersRowByRow(udata_t, vCluster_t&, vCluster_t&, udata_t, clr_idx);
 void concatClusters(vCluster_t&, bool (*comp)(const cluster_t&, const cluster_t&));
@@ -118,6 +120,7 @@ inline udata_t decrease_to_1(udata_t);
 inline udata_t decrease_at_least_to_1(udata_t);
 udata_t sumOfClusters(const vCluster_t&);
 inline const char getColorByIndex(clr_idx);
+void deleteCluster(udata_t (&)[][_Y_], vCluster_t&, clr_idx, ptrdiff_t, udata_t);
 udata_t deleteClustersByIntersectionRow(udata_t&, udata_t);
 void shiftClusters(udata_t (&)[][_Y_]);
 
@@ -184,6 +187,7 @@ int main()
             vClusters.clear();
             if (_y_)
             {
+                // const-size loop
                 for(size_t dim_ {0}; dim_ < _DIM_; ++dim_)
                 {
                     vTempClusters.clear();
@@ -233,16 +237,6 @@ int main()
     return 0;
 }
 
-void deleteCluster(udata_t (&Data)[][_Y_], vCluster_t& vClusters, clr_idx cur_color, ptrdiff_t cur_idx, udata_t data_intersect)
-{
-    if(data_intersect & Data[cur_color][cur_idx])
-    {
-        data_intersect = deleteClustersByIntersectionRow(Data[cur_color][cur_idx], data_intersect);
-        if (cur_idx > static_cast<ptrdiff_t>(_Y_) - _y_)    deleteCluster(Data, vClusters, cur_color, cur_idx - 1, data_intersect);
-        if (cur_idx < static_cast<ptrdiff_t>(_Y_) - 1)      deleteCluster(Data, vClusters, cur_color, cur_idx + 1, data_intersect);
-    }
-}
-
 void makeClustersByRow(udata_t row, vCluster_t& cl, udata_t y)
 {
     bool found = false;
@@ -288,6 +282,8 @@ void concatClustersRowByRow(udata_t row, vCluster_t& cl, vCluster_t& whole_cl, u
 {
     vCluster_t new_cl;
     makeClustersByRow(row, new_cl, cur_y);
+    // cl.size() is 0..(_X_ / 2)
+    // and further the same "estimations" take place
     for(ptrdiff_t i {0}; i < static_cast<ptrdiff_t>(cl.size()); ++i)
     {
         udata_t temp_mask = 0u;
@@ -401,6 +397,16 @@ inline const char getColorByIndex(clr_idx x)
     return static_table[x];
 }
 
+void deleteCluster(udata_t (&Data)[][_Y_], vCluster_t& vClusters, clr_idx cur_color, ptrdiff_t cur_idx, udata_t data_intersect)
+{
+    if(data_intersect & Data[cur_color][cur_idx])
+    {
+        data_intersect = deleteClustersByIntersectionRow(Data[cur_color][cur_idx], data_intersect);
+        if (cur_idx > static_cast<ptrdiff_t>(_Y_) - _y_)    deleteCluster(Data, vClusters, cur_color, cur_idx - 1, data_intersect);
+        if (cur_idx < static_cast<ptrdiff_t>(_Y_) - 1)      deleteCluster(Data, vClusters, cur_color, cur_idx + 1, data_intersect);
+    }
+}
+
 udata_t deleteClustersByIntersectionRow(udata_t& row, udata_t irow)
 {
     udata_t res_row = 0u;
@@ -443,6 +449,7 @@ void shiftClusters(udata_t (&data)[][_Y_])
         {
             for(size_t y = {_Y_ - _y_}; y < _Y_; ++y)
             {
+                // const-size loop
                 for(size_t i {0}; i < _DIM_; ++i)
                 {
                     if (data[i][y])
@@ -463,6 +470,7 @@ void shiftClusters(udata_t (&data)[][_Y_])
                 data_t upper_pos = decrease_at_least_to_1(vMap_X_clusters[i].lower_mask) + _Y_ - _y_;
                 for(size_t y {_Y_ - _y_}; static_cast<ptrdiff_t>(y) < upper_pos; ++y)
                 {
+                    // const-size loop
                     for(size_t j {0}; j < _DIM_; ++j)
                     {
                         if (GETBIT(data[j][upper_pos - y - 1], _X_ - 1 - x))

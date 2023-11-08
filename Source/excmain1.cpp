@@ -19,8 +19,9 @@ int main()
         int cur;
         while(::std::cin >> cur && cur)
         {
-            ::std::stack<::std::pair<int, int>> sI;
-            sI.push({cur, 0});
+            ::std::stack<::std::pair<int, int>> sOnBranch;
+            sOnBranch.push({cur - 1, cur - 1});
+            int upperBound = cur;
             for(int i = 1; i < n; ++i)
             {
                 ::std::cin >> cur;
@@ -29,40 +30,22 @@ int main()
                     // in order not to throw numbers in the input stream after a breakdown, print the answer at the end
                     continue;
                 }
-                if (cur > sI.top().first + 1)
+                if (cur == upperBound + 1) upperBound = cur;
+                else if (cur > upperBound + 1)
                 {
-                    sI.push({cur, 0});
+                    sOnBranch.push({cur - 1, cur - upperBound - 1});
+                    upperBound = cur;
                 }
-                else if (cur == sI.top().first + 1)
+                else if (cur < sOnBranch.top().first)
                 {
-                    ++sI.top().first;
-                    ++sI.top().second;
+                    broken = true;
                 }
-                else if (cur == sI.top().first - sI.top().second - 1)
+                else if (cur == sOnBranch.top().first)
                 {
-                    ++sI.top().second;
+                    --sOnBranch.top().first;
+                    --sOnBranch.top().second;
                 }
-                else
-                {
-                    // if the current cluster is over, check if the transition to the previous one is correct
-                    while (cur < sI.top().first - sI.top().second - 1)
-                    {
-                        auto [edge, shift] = sI.top();
-                        sI.pop();
-                        if (!sI.empty() && sI.top().first + shift + 1 == edge && cur <= sI.top().first - sI.top().second - 1)
-                        {
-                            sI.top().first = edge;
-                            sI.top().second += shift + 1;
-                            continue;
-                        }
-                        else
-                        {
-                            broken = true;
-                            break;
-                        }
-                    }
-                    ++sI.top().second;
-                }
+                if (!sOnBranch.empty() && sOnBranch.top().second == 0) sOnBranch.pop();
             }
             if (broken)     ::std::cout << "No" << ::std::endl;
             else            ::std::cout << "Yes" << ::std::endl;

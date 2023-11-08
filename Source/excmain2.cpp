@@ -12,7 +12,11 @@
 #include <queue>
 #include <math.h>
 #include <type_traits>
+#include <limits>
 
+#define _EPS 1e-8
+
+// simplified special class for this task
 struct Point
 {
     enum class state : unsigned
@@ -41,223 +45,192 @@ struct Point
         return (is == state::def) ? true : false;
     }
 
-    bool operator==(const Point& p) noexcept(true)
+    bool operator==(const ::Point& p) noexcept(true)
     {
         return (p.is == is) && (abs(p.x - x) <= 1e-7) && (abs(p.y - y) <= 1e-7);
     }
 
 };
 
-struct Vec2d
+// simplified special class for this task
+class Vector3D
 {
+public:
+    enum class _state : int
+    {
+        undef = -1,
+        def = 1
+    };
+
+    _state state;
     double x;
     double y;
+    // it is need to defined a cross product
+    double z;
 
-    Vec2d(double ax, double ay) noexcept(true) : x(ax), y(ay) {}
-    Vec2d(Point p1, Point p2)   noexcept(true) : x(p2.x - p1.x), y(p2.y - p1.y) {}
+    Vector3D() noexcept(true) : state(_state::undef) {}
+    Vector3D(double ax, double ay, double az) noexcept(true) : state(_state::def), x(ax), y(ay), z(az) {}
+
+    operator bool() const noexcept(true)
+    {
+        return (state == _state::def) && (::std::abs(x) > _EPS || ::std::abs(y) > _EPS || ::std::abs(z) > _EPS);
+    }
+
+    ::Vector3D operator-() const noexcept(true)
+    {
+        return ::Vector3D(-x, -y, -z);
+    }
+
+    ::Vector3D operator+(const ::Vector3D& v) const noexcept(true)
+    {
+        return ::Vector3D(x + v.x, y + v.y, z + v.z);
+    }
+
+    ::Vector3D operator-(const ::Vector3D& v) const noexcept(true)
+    {
+        return this->operator+(-v);
+    }
+
+    bool operator==(const ::Vector3D& v) const noexcept(true)
+    {
+        return ::std::abs(v.x - x) < _EPS && ::std::abs(v.y - y) < _EPS && ::std::abs(v.z - z) < _EPS;
+    }
+
+    // scalar-product
+    ::Vector3D operator*(double a) const noexcept(true)
+    {
+        return ::Vector3D(x * a, y * a, z * a);
+    }
+
+    inline static double dotProd(const ::Vector3D& v1, const ::Vector3D& v2) noexcept(true)
+    {
+        return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+    }
+
+    inline static double norm2(const ::Vector3D& v) noexcept(true)
+    {
+        return dotProd(v, v);
+    }
+
+    inline static ::Vector3D crossProd(const ::Vector3D& v1, const ::Vector3D& v2) noexcept(true)
+    {
+        return ::Vector3D((v1.y * v2.z - v1.z * v2.y), -(v1.x * v2.z - v1.z * v2.x), (v1.x * v2.y - v1.y * v2.x));
+    }
+
+    inline static int isColinear(const ::Vector3D& v1, const ::Vector3D& v2) noexcept(true)
+    {
+        return v1 && v2 && !::Vector3D::crossProd(v1, v2);
+    }
 
 };
 
-struct Straight
+template<typename T>
+concept Vector3D_t = ::std::is_same_v<::std::decay_t<T>, ::Vector3D>;
+
+// simplified special class for this task
+class Segment3D
 {
-    double a;
-    double b;
-    double c;
+public:
+    ::Vector3D start;
+    ::Vector3D end;
 
-    Straight(double aa, double ab, double ac)   noexcept(true)  : a(aa), b(ab), c(ac) {}
-    Straight(Point f, Point s)                  noexcept(true)  : a(s.y - f.y), b(f.x - s.x), c(f.x * (f.y - s.y) + f.y * (s.x - f.x)) {}
+    Segment3D() = delete;
+    Segment3D(Vector3D_t auto&& a, Vector3D_t auto&& b) noexcept(true) : start(::std::forward<decltype(a)>(a)), end(::std::forward<decltype(b)>(b)) {}
 
-};
-
-struct Polygon
-{
-    ::std::deque<Point> dPoints;
-
-    Polygon() noexcept(true) {}
+    bool operator==(const ::Segment3D& s) const noexcept(true)
+    {
+        return (start == s.start) && (end == s.end);
+    }
 
 };
 
-Point intersectionOfRayAndStraight(Point, Vec2d, const Straight&) noexcept(false);
-Point intersectionOfSectionAndStraight(Point, Point, const Straight&) noexcept(false);
-Point intersectionOfRayAndSection(Point, Vec2d, Point, Point) noexcept(false);
-void splitVertexes(const Straight&, ::std::vector<Polygon>&);
-unsigned _spec_BFS(const ::std::vector<Polygon>&, size_t);
+// simplified method for non-zero segments
+::Vector3D intersectOf2Segments(const ::Segment3D& s1, const ::Segment3D& s2) noexcept(true);
 
 int main()
 {
     size_t n;
     ::std::cin >> n;
-    ::std::vector<Polygon> vVertexes;
-    vVertexes.reserve(1ull);
-    vVertexes.emplace_back();
-    vVertexes.back().dPoints.push_back(Point(0, 0));
-    vVertexes.back().dPoints.push_back(Point(0, 100));
-    vVertexes.back().dPoints.push_back(Point(100, 100));
-    vVertexes.back().dPoints.push_back(Point(100, 0));
-    // add a new line, and create and update polygons on the go
+    ::std::vector<::Segment3D> vSeg;
+    vSeg.reserve(n);
     for(size_t i {0}; i < n; ++i)
     {
         int x1, x2, y1, y2;
         ::std::cin >> x1 >> y1 >> x2 >> y2;
-        splitVertexes(Straight(Point(static_cast<double>(x1), static_cast<double>(y1)), Point(static_cast<double>(x2), static_cast<double>(y2))), vVertexes);
+        vSeg.emplace_back(::Vector3D(static_cast<double>(x1), static_cast<double>(y1), 0.), ::Vector3D(static_cast<double>(x2), static_cast<double>(y2), 0.));
     }
-    Point treasure;
+    double x, y;
+    ::std::cin >> x >> y;
+    ::Point treasure(x, y);
+    size_t res_count = ::std::numeric_limits<decltype(res_count)>::max();
+    for(size_t i {0}; i < 100ull; ++i)
     {
-        double x, y;
-        ::std::cin >> x >> y;
-        treasure.x = x;
-        treasure.y = y;
+        size_t cur_count = 1ull;
+        for(size_t j {0}; j < vSeg.size(); ++j)
+        {
+            if (intersectOf2Segments(
+                ::Segment3D(::Vector3D(treasure.x, treasure.y, 0.), ::Vector3D(static_cast<double>(i), 0., 0.)),
+                vSeg[j]))   ++cur_count;
+        }
+        if (cur_count < res_count) res_count = cur_count;
     }
-    // just find in which room the treasure
-    for(size_t i {0}; i < vVertexes.size(); ++i)
+    for(size_t i {0}; i < 100ull; ++i)
     {
-        int count = 0;
-        if (intersectionOfRayAndSection(treasure, Vec2d(1., 0.), vVertexes[i].dPoints.back(), vVertexes[i].dPoints.front())) ++count;
-        for(size_t j {0}; j < vVertexes[i].dPoints.size() - 1; ++j)
+        size_t cur_count = 1ull;
+        for(size_t j {0}; j < vSeg.size(); ++j)
         {
-            if (intersectionOfRayAndSection(treasure, Vec2d(1., 0.), vVertexes[i].dPoints[j], vVertexes[i].dPoints[j + 1])) ++count;
+            if (intersectOf2Segments(
+                ::Segment3D(::Vector3D(treasure.x, treasure.y, 0.), ::Vector3D(100., static_cast<double>(i), 0.)),
+                vSeg[j]))   ++cur_count;
         }
-        if (count == 1)
-        {
-            // breadth-first search for minimum path
-            ::std::cout << _spec_BFS(vVertexes, i) << ::std::endl;
-            break;
-        }
+        if (cur_count < res_count) res_count = cur_count;
     }
+    for(ptrdiff_t i {100}; i > 0ll; --i)
+    {
+        size_t cur_count = 1ull;
+        for(size_t j {0}; j < vSeg.size(); ++j)
+        {
+            if (intersectOf2Segments(
+                ::Segment3D(::Vector3D(treasure.x, treasure.y, 0.), ::Vector3D(static_cast<double>(i), 100., 0.)),
+                vSeg[j]))   ++cur_count;
+        }
+        if (cur_count < res_count) res_count = cur_count;
+    }
+    for(ptrdiff_t i {100}; i > 0ll; --i)
+    {
+        size_t cur_count = 1ull;
+        for(size_t j {0}; j < vSeg.size(); ++j)
+        {
+            if (intersectOf2Segments(
+                ::Segment3D(::Vector3D(treasure.x, treasure.y, 0.), ::Vector3D(0., static_cast<double>(i), 0.)),
+                vSeg[j]))   ++cur_count;
+        }
+        if (cur_count < res_count) res_count = cur_count;
+    }
+
+    ::std::cout << res_count;
 
     return 0;
 }
 
-Point intersectionOfRayAndStraight(Point p, Vec2d v, const Straight& line) noexcept(false) try
+// simplified method for non-zero complanar segments
+::Vector3D intersectOf2Segments(const Segment3D& s1, const Segment3D& s2) noexcept(true)
 {
-    double res = (-line.a * p.x - line.b * p.y - line.c) / (line.a * v.x + line.b * v.y);
-    if (res > 0.) return Point(p.x + v.x * res, p.y + v.y * res);
-    return Point();
-}
-catch(...)
-{
-    return Point();
-}
-
-Point intersectionOfSectionAndStraight(Point p1, Point p2, const Straight& line) noexcept(false) try
-{
-    double res1 = (-line.a * p1.x - line.b * p1.y - line.c) / (line.a * (p2.x - p1.x) + line.b * (p2.y - p1.y));
-    double res2 = (-line.a * p2.x - line.b * p2.y - line.c) / (line.a * (p1.x - p2.x) + line.b * (p1.y - p2.y));
-    if (res1 > 0. && res2 > 0.) return Point(p1.x + (p2.x - p1.x) * res1, p1.y + (p2.y - p1.y) * res1);
-    return Point();
-}
-catch(...)
-{
-    return Point();
-}
-
-Point intersectionOfRayAndSection(Point p, Vec2d v, Point p1, Point p2) noexcept(false) try
-{
-    Point temp;
-    if (intersectionOfSectionAndStraight(p1, p2, Straight(p, Point(p.x + v.x, p.y + v.y))) &&
-        (temp = intersectionOfRayAndStraight(p, v, Straight(p1, p2)))) return temp;
-    return Point();
-}
-catch(...)
-{
-    return Point();
-}
-
-void splitVertexes(const Straight& line, ::std::vector<Polygon>& vtx) noexcept(false)
-{
-    size_t temp = vtx.size();
-    for(size_t i = 0ull; i < temp; ++i)
+    ::Vector3D a1(s2.start - s1.start);
+    //::Vector3D a2(s2.end - s1.start);
+    ::Vector3D v1(s1.end - s1.start);
+    ::Vector3D v2(s2.end - s2.start);
+    // for non-colinear segments (zero-segments are not coliear)
+    if (!::Vector3D::isColinear(v1, v2))
     {
-        Point p1, p2;
-        ptrdiff_t _start = -1ll;
-        if ((p1 = intersectionOfSectionAndStraight(vtx[i].dPoints.back(), vtx[i].dPoints[0ull], line)))
+        double s = ::Vector3D::dotProd(::Vector3D::crossProd(a1, v2), ::Vector3D::crossProd(v1, v2)) /
+            ::Vector3D::norm2(::Vector3D::crossProd(v1, v2));
+        double t = ::Vector3D::dotProd(::Vector3D::crossProd(a1, v1), ::Vector3D::crossProd(v1, v2)) /
+            ::Vector3D::norm2(::Vector3D::crossProd(v1, v2));
+        if ((s > -_EPS && s - 1. < _EPS) && (t > -_EPS && t - 1. < _EPS))
         {
-            _start = 0ull;
-        }
-        else
-        {
-            for(size_t j {0}; j < vtx[i].dPoints.size() - 1; ++j)
-            {
-                if ((p1 = intersectionOfSectionAndStraight(vtx[i].dPoints[j], vtx[i].dPoints[j + 1], line)))
-                {
-                    _start = j + 1;
-                    break;
-                }
-            }
-            if (!p1) continue;
-        }
-        for(size_t j = _start; j < vtx[i].dPoints.size() - 1; ++j)
-        {
-            if ((p2 = intersectionOfSectionAndStraight(vtx[i].dPoints[j], vtx[i].dPoints[j + 1], line)))
-            {
-                vtx.reserve(vtx.capacity() + 1);
-                vtx.emplace_back();
-                vtx.back().dPoints.push_back(p1);
-                for(size_t k = _start; k < j + 1; ++k)
-                {
-                    vtx.back().dPoints.push_back(vtx[i].dPoints[k]);
-                }
-                vtx.back().dPoints.push_back(p2);
-                vtx[i].dPoints.erase(vtx[i].dPoints.begin() + _start, j < vtx[i].dPoints.size() - 1 ? vtx[i].dPoints.begin() + j + 1 : vtx[i].dPoints.end());
-                vtx[i].dPoints.emplace(vtx[i].dPoints.begin() + _start, p2);
-                vtx[i].dPoints.emplace(vtx[i].dPoints.begin() + _start, p1);
-                break;
-            }
+            return ::Vector3D(s1.start + v1 * s);
         }
     }
-}
-
-unsigned _spec_BFS(const ::std::vector<Polygon>& vPolygon, size_t target) noexcept(false)
-{
-    unsigned min_dist_2_target = -1;
-    ::std::queue<size_t> queue;
-    ::std::vector<unsigned> vDist2Polygon(vPolygon.size(), -1);
-    queue.push(target);
-    vDist2Polygon[target] = 0;
-    while(!queue.empty())
-    {
-        size_t cur_idx = queue.front();
-        unsigned current_range = vDist2Polygon[cur_idx] + 1;
-        Polygon cur = vPolygon[cur_idx];
-        queue.pop();
-        for(size_t i {0}; i < cur.dPoints.size(); ++i)
-        {
-            size_t next_i = i < cur.dPoints.size() - 1 ? i + 1 : 0ull;
-            if (((cur.dPoints[i].x != cur.dPoints[next_i].x) || ((cur.dPoints[i].x != 0) && (cur.dPoints[i].x != 100)))
-                && ((cur.dPoints[i].y != cur.dPoints[next_i].y) || ((cur.dPoints[i].y != 0) && (cur.dPoints[i].y != 100))))
-            {
-                for(size_t j {0}; j < vPolygon.size(); ++j)
-                {
-                    if (cur_idx != j)
-                    {
-                        for(size_t k {0}; k < vPolygon[j].dPoints.size(); ++k)
-                        {
-                            size_t prev_k = k > 0 ? k - 1 : vPolygon[j].dPoints.size() - 1;
-                            if (vPolygon[j].dPoints[k] == cur.dPoints[i])
-                            {
-                                if (vPolygon[j].dPoints[prev_k] == cur.dPoints[next_i])
-                                {
-                                    if (vDist2Polygon[j] > current_range)
-                                    {
-                                        vDist2Polygon[j] = current_range;
-                                        queue.push(j);
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            else
-            {
-                if (min_dist_2_target > current_range)
-                {
-                    if (current_range == 1) return current_range;
-                    min_dist_2_target = current_range;
-                }
-            }
-        }
-    }
-    return min_dist_2_target;
+    return ::Vector3D();
 }

@@ -676,7 +676,7 @@ int main()
     }
 }
 
-template<typename T, typename I = ::std::enable_if_t<::std::is_fundamental_v<T>, void>>
+template<typename T, typename I>
 ::std::string nts(const T& example)
 {
 	::std::stringstream ss(::std::stringstream::in | ::std::stringstream::out);
