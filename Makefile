@@ -1,9 +1,9 @@
 CXX = g++
-# GHC = ghc
+GHC = ghc
 DEBUGFLAGS_CPP = -g
-# DEBUGFLAGS_HS = -g --make -dynamic
+DEBUGFLAGS_HS = -g --make -dynamic
 RELEASEFLAGS_CPP = -O3
-# RELEASEFLAGS_HS = -O2 --make -dynamic
+RELEASEFLAGS_HS = -O2 --make -dynamic
 
 ifeq ($(OS), Windows_NT)
 	SHELL = CMD
@@ -33,8 +33,10 @@ ifeq ($(OS), Windows_NT)
 	EXE_graph1 = ./Release/graph1.exe
 	EXE_dztpr1d = ./Debug/dztpr1.exe
 	EXE_dztpr1 = ./Release/dztpr1.exe
-	# EXE_mmcm1d = ./Debug/mmcm1.exe
-	# EXE_mmcm1 = ./Release/mmcm1.exe
+	EXE_mmcm1d = ./Debug/mmcm1.exe
+	EXE_mmcm1 = ./Release/mmcm1.exe
+	EXE_mmcm2d = ./Debug/mmcm2.exe
+	EXE_mmcm2 = ./Release/mmcm2.exe
 
 else
     UNAME_S := $(shell uname -s)
@@ -66,15 +68,17 @@ else
 		EXE_graph1 = ./Release/graph1
 		EXE_dztpr1d = ./Debug/dztpr1
 		EXE_dztpr1 = ./Release/dztpr1
-		# EXE_mmcm1d = ./Debug/mmcm1
-		# EXE_mmcm1 = ./Release/mmcm1
+		EXE_mmcm1d = ./Debug/mmcm1
+		EXE_mmcm1 = ./Release/mmcm1
+		EXE_mmcm2d = ./Debug/mmcm2
+		EXE_mmcm2 = ./Release/mmcm2
     endif
 endif
 
 $(info init..)
 .PHONY: main4d main4 vmain1d vmain1 vmain2d vmain2 vmain3d vmain3 emain1d emain1		\
 	emain2d emain2 emain3d emain3 emain4d emain4 emain5d emain5 lcmaind					\
-	lcmain graph1d graph1 dztpr1d dztpr1 mmcm1d mmcm1
+	lcmain graph1d graph1 dztpr1d dztpr1 mmcm1d mmcm1 mmcm2d mmcm2
 main4d: ./Source/main4.cpp $(EXE_main4d)
 main4: ./Source/main4.cpp $(EXE_main4)
 vmain1d: ./Source/vmain1.cpp $(EXE_vmain1d)
@@ -99,8 +103,10 @@ graph1d: ./Source/graph1.cpp $(EXE_graph1d)
 graph1: ./Source/graph1.cpp $(EXE_graph1)
 dztpr1d: ./Source/dztpr1.cpp $(EXE_dztpr1d)
 dztpr1: ./Source/dztpr1.cpp $(EXE_dztpr1)
-# mmcm1d: ./Source/mmcm1d.hs $(EXE_mmcm1d)
-# mmcm1: ./Source/mmcm1.hs $(EXE_mmcm1)
+mmcm1d: ./Source/mmcm1.hs $(EXE_mmcm1d)
+mmcm1: ./Source/mmcm1.hs $(EXE_mmcm1)
+mmcm2d: ./Source/mmcm2.cpp $(EXE_mmcm2d)
+mmcm2: ./Source/mmcm2.cpp $(EXE_mmcm2)
 
 ./Build/main4.o: ./Source/main4.cpp
 	$(info processing....)
@@ -198,13 +204,21 @@ dztpr1: ./Source/dztpr1.cpp $(EXE_dztpr1)
 	$(info processing....)
 	$(CXX) $(DEBUGFLAGS_CPP) $(CFLAGS) $< -o $@
 
-# ./Build/mmcm1.o: ./Source/mmcm1.hs
-# 	$(info processing....)
-# 	$(GHC) $(RELEASEFLAGS_HS) $< -o $@
+./Build/mmcm1.o: ./Source/mmcm1.hs
+	$(info processing....)
+	$(GHC) $(RELEASEFLAGS_HS) $< -o $@
 
-# ./Build/mmcm1.d.o: ./Source/mmcm1.hs
-# 	$(info processing....)
-# 	$(GHC) $(RELEASEFLAGS_HS) $< -o $@
+./Build/mmcm1.d.o: ./Source/mmcm1.hs
+	$(info processing....)
+	$(GHC) $(DEBUGFLAGS_HS) $< -o $@
+
+./Build/mmcm2.o: ./Source/mmcm2.cpp
+	$(info processing....)
+	$(CXX) $(RELEASEFLAGS_CPP) $(CFLAGS) $< -o $@
+
+./Build/mmcm2.d.o: ./Source/mmcm2.cpp
+	$(info processing....)
+	$(CXX) $(DEBUGFLAGS_CPP) $(CFLAGS) $< -o $@
 
 $(EXE_main4d): ./Build/main4.d.o
 	$(info processing......)
@@ -302,13 +316,21 @@ $(EXE_dztpr1): ./Build/dztpr1.o
 	$(info processing......)
 	$(CXX) $(LDFLAGS) $^ -o $@
 
-# $(EXE_mmcm1d): ./Build/mmcm1.d.o
-# 	$(info processing......)
-# 	echo "compiled"
+$(EXE_mmcm1d): ./Build/mmcm1.d.o
+	$(info processing......)
+	mv $< $@
 
-# $(EXE_mmcm1): ./Build/mmcm1.o
-# 	$(info processing......)
-# 	echo "compiled"
+$(EXE_mmcm1): ./Build/mmcm1.o
+	$(info processing......)
+	mv $< $@
+
+$(EXE_mmcm2d): ./Build/mmcm2.d.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) -larmadillo $^ -o $@
+
+$(EXE_mmcm2): ./Build/mmcm2.o
+	$(info processing......)
+	$(CXX) $(LDFLAGS) -larmadillo $^ -o $@
 
 .PHONY: clean clean_with_bin
 clean:
